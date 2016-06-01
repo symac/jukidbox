@@ -4,22 +4,31 @@
 import os, subprocess, sys
 import pygame
 
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+file_handler = RotatingFileHandler('logging_example.out', 'a', 1000000, 1)
+logger.addHandler(file_handler)
+file_handler.setFormatter(formatter)
+
 # Library to deal with database
 import sqlite3
 import RPi.GPIO as GPIO
 import time
 
-conn = sqlite3.connect('jukidbox.sqlite')
+conn = sqlite3.connect('jukidbox.sqlite',  check_same_thread = False)
+
 conn.text_factory = str
 c = conn.cursor()
 
 # This variable will be used to store the process of the mp3 player (and terminate it if needed)
 ACTIVE_PROCESS = None
-pinNextAlbum = 18
-pinNextTrack = 23
-
-pinNextAlbum = 18
-pinNextTrack = 23
+pinNextAlbum = 14
+pinNextTrack = 18
+pinPreviousTrack = 15
 
 idCurrentTrack = None
 idCurrentAlbum = None
@@ -30,9 +39,9 @@ GPIO.setmode(GPIO.BCM)
 
 GPIO.setup(pinNextAlbum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(pinNextTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(pinPreviousTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-def log(log_str):
-	print log_str
+
 
 def stop_song():
 	global ACTIVE_PROCESS
@@ -41,66 +50,151 @@ def stop_song():
 
 # play a song based on the id
 def play_song(song_id):
+	global idCurrentTrack
+	global idCurrentAlbum
+
+	logger.warning("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
 	global ACTIVE_PROCESS
 	
 	# We first need to stop the current player before reloading it
-	c.execute('SELECT album.directory, track.filename FROM track, album WHERE track.id_album = album.id and track.id=?', (song_id,))
+	c.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (song_id,))
 
-	track = os.path.join(*c.fetchone())
+	result = c.fetchone()
+
+	track = os.path.join(result[0], result[1])
+	trackNumber = result[2]
 	
 	if ACTIVE_PROCESS:
 		# On arrête la chanson en cours avant de lancer la suivante
 		stop_song()
 
 	ACTIVE_PROCESS = subprocess.Popen(["mpg321", "%s" % track])
-	updateSongName(track)
+	updateSongDescription(trackNumber, track)
 	pass
 
-def updateSongName(songTitle):
-	WHITE = (255,255,255)
-	# Display some text
-	font_big = pygame.font.Font(None, 20)
+def updateSongDescription(number, title):
+	global screen, background
+	global screen_w, screen_h
 
-	text_surface = font_big.render('%s' % songTitle, True, WHITE)
-	rect = text_surface.get_rect(center=(180,780))
-	screen.fill((255,200,0))
-	screen.blit(text_surface, rect)
-	updateCover()
-	pygame.display.flip()
+	try:
 
+		# We hide the previous data
+		pygame.draw.rect(background, pygame.Color(255, 255, 255), pygame.Rect(0, screen_w, screen_w, screen_h))
+
+		# Display some text
+		font = pygame.font.Font(None, 128)
+		text = font.render(str(number), 1, (0, 0, 0))
+		textpos = text.get_rect()
+		textpos.centerx = background.get_rect().centerx
+		textpos.centery = screen_w + 64
+
+		background.blit(text, textpos)
+
+		font = pygame.font.Font(None, 36)
+		rect = pygame.Rect(0, screen_w + 160, screen_w, screen_h)
+
+		drawText(background, os.path.basename(title), (0, 0, 0), rect , font)
+		logger.exception("TITLE : %s" % title)
+
+		# Blit everything to the screen
+		screen.blit(background, (0, 0))
+		pygame.display.flip()	
+	except Exception, e:
+		logger.warning("Erreur drawtext")
+		logger.warning(e)
+		raise
+	return
 # We need to update the cover that is displaying
 def updateCover():
 	global screen, background
+	global screen_w, screen_h
+
 	c.execute('SELECT directory, cover from album where id = ?', (idCurrentAlbum, ))
 	result = c.fetchone()
 	if result[1] is not None:
+		# We clean the previous cover
+		pygame.draw.rect(background, pygame.Color(255, 255, 255), pygame.Rect(0, 0, screen_w, screen_w))
 		coverPath = os.path.join(*result)
 		img=pygame.image.load(coverPath)
 		img_size = img.get_size()
-		background = pygame.transform.scale(img, (480, (480 * img_size[0] / img_size[1])))
-		screen.blit(img,(0,0))
+		logger.exception("Taille image originale : %s x %s" % (img_size[0], img_size[1]))
+		img_resize = pygame.transform.scale(img, (screen_w, (screen_w * img_size[1] / img_size[0])))
+		img_size = img_resize.get_size()
+		logger.exception("Taille image resize : %s x %s" % (img_size[0], img_size[1]))
+		
+		background.blit(img_resize, (0,0)) 
+		screen.blit(background,(0,0))
 		pygame.display.flip() # update the display
 	pass
 
+def drawText(surface, text, color, rect, font, aa=False, bkg=None):
+	rect = pygame.Rect(rect)
+	y = rect.top
+	lineSpacing = -2
+ 
+	# get the height of the font
+	fontHeight = font.size("Tg")[1]
+ 
+	while text:
+		i = 1
+ 
+		# determine if the row of text will be outside our area
+		if y + fontHeight > rect.bottom:
+			break
+ 
+		# determine maximum width of line
+		while font.size(text[:i])[0] < rect.width and i < len(text):
+			i += 1
+ 
+		# if we've wrapped the text, then adjust the wrap to the last word	  
+		if i < len(text): 
+			i = text.rfind(" ", 0, i) + 1
+ 
+		# render the line and blit it to the surface
+		if bkg:
+			image = font.render(text[:i], 1, color, bkg)
+			image.set_colorkey(bkg)
+		else:
+			image = font.render(text[:i], aa, color)
+ 
+		surface.blit(image, (rect.left, y))
+		y += fontHeight + lineSpacing
+ 
+		# remove the text we just blitted
+		text = text[i:]
+
+	return text
 
 # We skip to next album, the returned value is the one of the first track of next album
 def getNextAlbum(order = 1):
 	global idCurrentAlbum, idCurrentTrack
-	c.execute('SELECT min(id), id_album from track where id_album > ? order by id', (idCurrentAlbum, ))
-
+	logger.warning("get Next album from %s " % idCurrentAlbum)
+	try:
+		logger.warning("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % idCurrentAlbum)
+		c.execute('SELECT min(id), id_album from track where id_album > ? order by id', (idCurrentAlbum, ))
+		logger.warning("SQL END")
+	except:
+		logger.warning("ERRRRRRRRRRRRRR")
 	result = c.fetchone()
+	logger.warning("SQL fetchone ok")
 	idCurrentAlbum = result[1]
+
 	if idCurrentAlbum is None:
+		logger.warning("GNA, idCurrentAlbum is null")
 		# If the query returns an empty value it means we have reached the last album, we need to start back
 		idCurrentAlbum = None
 		idCurrentTrack = None
-		return getNextTrack()
+		idCurrentTrack = getNextTrack()
+		logger.warning("GNA, getNextTrack : %s" % idCurrentTrack)
+		return idCurrentTrack
+	logger.warning("Begin update cover")
 	updateCover()
+	logger.warning("END of GNA")
 	return result[0]
 	pass
 
 # get the next song to play. By default the next one, if order is set to -1, the previous one
-def getNextTrack(order = 1):
+def getNextTrack(order = True):
 	global idCurrentAlbum, idCurrentTrack
 
 	if idCurrentTrack is None:
@@ -111,7 +205,11 @@ def getNextTrack(order = 1):
 			updateCover()
 		return result[0]
 	else:
-		c.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
+		if order == True:
+			c.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
+		elif order == False:
+			c.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
+
 		result = c.fetchone()
 		if result[1] != idCurrentAlbum:
 			idCurrentAlbum = result[1]
@@ -119,53 +217,78 @@ def getNextTrack(order = 1):
 		return result[0]
 	pass
 
+def playNextAlbum(channel = None):
+	logger.warning("FNC playNextAlbum")
+	global idCurrentTrack
+	idCurrentTrack = getNextAlbum()
+	play_song(idCurrentTrack)
+
+def playNextTrack(order = True):
+	logger.warning("FNC playNextTrack")
+	global idCurrentTrack
+	idCurrentTrack = getNextTrack(order)
+	play_song(idCurrentTrack)
+
+#GPIO.add_event_detect(pinNextAlbum, GPIO.RISING, callback=playNextAlbum, bouncetime=700)
+#GPIO.add_event_detect(pinNextTrack, GPIO.RISING, callback=playNextTrack, bouncetime=700)
+
 def isKeyPressed(pinNumber):
 	input_state = GPIO.input(pinNumber)
 	if input_state == False:
 		return True
 	return False
 
-
 def main():
 	# We need to init the display
-	global idCurrentTrack, idCurrentAlbum, screen
+	global idCurrentTrack, idCurrentAlbum, screen, background
+	global screen_w, screen_h
 
 	pygame.init()
 	os.environ['SDL_VIDEODRIVER']="directfb"
 	pygame.mouse.set_visible(False)
-	screen = pygame.display.set_mode((480, 800))
-	screen.fill((255,200,0))
+	infoObject = pygame.display.Info()
+	screen_w = infoObject.current_w
+	screen_h = infoObject.current_h
+
+	screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+	background = pygame.Surface(screen.get_size())
+	background.fill((255,200,0))
 	
 	# We start by loading the first track
+
+	infoObject = pygame.display.Info()
+	pygame.display.set_mode((infoObject.current_w, infoObject.current_h))
 
 	idCurrentTrack = getNextTrack()
 	play_song(idCurrentTrack)
 
-
+	running = True
 	try:
-		running = True
 		while (running):
 			# We need to check that esc had not been pressed
 			isPressedNextAlbum = isKeyPressed(pinNextAlbum)
 			isPressedNextTrack = isKeyPressed(pinNextTrack)
+			isPressedPreviousTrack = isKeyPressed(pinPreviousTrack)
 			if isPressedNextTrack:
-				idCurrentTrack = getNextTrack()
-				play_song(idCurrentTrack)
+				playNextTrack()
 			elif isPressedNextAlbum:
-				idCurrentTrack = getNextAlbum()
-				play_song(idCurrentTrack)
+				playNextAlbum()
+			elif isPressedPreviousTrack:
+				playNextTrack(False)
+
 
 			for e in pygame.event.get():
-				if e.type == QUIT:
+				if e.type == pygame.QUIT:
 					running = False
-				elif e.type == KEYDOWN and e.key == K_ESCAPE:
+				elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
 					running = False
 
 			time.sleep(0.1)	
-		stop_song()
-		print "FIN"
-	except:
-		stop_song()
+	except Exception, e:
+		logger.exception("ERREUR found : %s" % e)
+	stop_song()
+	pygame.quit()
+
 
 if __name__ == '__main__':
     main()
