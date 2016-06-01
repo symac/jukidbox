@@ -42,9 +42,11 @@ for subdir in subdirs:
 		c.execute("insert into album (`directory`, `cover`) values (?, ?)",  (subdir, cover))
 		id_album = c.lastrowid
 
+		trackNumber = 1
 		for track in tracks:
-			c.execute("insert into track (`id_album`, `filename`) values (?, ?)", (id_album, track))
-			print c.lastrowid
+			c.execute("insert into track (`id_album`, `filename`, `number`) values (?, ?, ?)", (id_album, track, trackNumber))
+			print "%s [%s %s]" % (track[0:30], trackNumber, c.lastrowid)
+			trackNumber += 1
 		# We commit this album 
 		conn.commit()
 conn.close()
