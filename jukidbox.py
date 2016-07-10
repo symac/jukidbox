@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
-file_handler = RotatingFileHandler('logging_example.out', 'a', 1000000, 1)
+file_handler = RotatingFileHandler('/tmp/logging_example.out', 'a', 1000000, 1)
 logger.addHandler(file_handler)
 file_handler.setFormatter(formatter)
 
@@ -19,7 +19,8 @@ import sqlite3
 import RPi.GPIO as GPIO
 import time
 
-conn = sqlite3.connect('jukidbox.sqlite',  check_same_thread = False)
+print "Loading %s" % os.path.dirname(os.path.abspath(__file__)) + '/jukidbox.sqlite'
+conn = sqlite3.connect(os.path.dirname(os.path.abspath(__file__)) + '/jukidbox.sqlite',  check_same_thread = False)
 
 conn.text_factory = str
 c = conn.cursor()
@@ -54,6 +55,7 @@ def play_song(song_id):
 	global idCurrentAlbum
 
 	logger.warning("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
+	logger.warning("We are moving to %s" % song_id)
 	global ACTIVE_PROCESS
 	
 	# We first need to stop the current player before reloading it
@@ -200,6 +202,7 @@ def getNextTrack(order = True):
 	if idCurrentTrack is None:
 		c.execute('SELECT min(id), id_album from track order by id')
 		result = c.fetchone()
+		print result
 		if result[1] != idCurrentAlbum:
 			idCurrentAlbum = result[1]
 			updateCover()
