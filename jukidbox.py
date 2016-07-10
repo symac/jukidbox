@@ -4,15 +4,17 @@
 import os, subprocess, sys
 import pygame
 
-import logging
-from logging.handlers import RotatingFileHandler
+logEnabled = True
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
-file_handler = RotatingFileHandler('/tmp/logging_example.out', 'a', 1000000, 1)
-logger.addHandler(file_handler)
-file_handler.setFormatter(formatter)
+if logEnabled:
+	import logging
+	from logging.handlers import RotatingFileHandler
+	logger = logging.getLogger()
+	logger.setLevel(logging.DEBUG)
+	formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+	file_handler = RotatingFileHandler('/tmp/jukidbox.log', 'a', 1000000, 1)
+	logger.addHandler(file_handler)
+	file_handler.setFormatter(formatter)
 
 # Library to deal with database
 import sqlite3
@@ -42,20 +44,23 @@ GPIO.setup(pinNextAlbum, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(pinNextTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(pinPreviousTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-
+def myLog(texte):
+	global logEnabled
+	if logEnabled:
+		logger.warning(texte)
 
 def stop_song():
 	global ACTIVE_PROCESS
-	ACTIVE_PROCESS.terminate()
-	ACTIVE_PROCESS = None
+	if ACTIVE_PROCESS.poll() == None:
+		# We terminate the process only if it is still active
+		ACTIVE_PROCESS.terminate()
 
 # play a song based on the id
 def play_song(song_id):
 	global idCurrentTrack
 	global idCurrentAlbum
-
-	logger.warning("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
-	logger.warning("We are moving to %s" % song_id)
+	myLog("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
+	myLog("We are moving to %s" % song_id)
 	global ACTIVE_PROCESS
 	
 	# We first need to stop the current player before reloading it
@@ -96,14 +101,14 @@ def updateSongDescription(number, title):
 		rect = pygame.Rect(0, screen_w + 160, screen_w, screen_h)
 
 		drawText(background, os.path.basename(title), (0, 0, 0), rect , font)
-		logger.exception("TITLE : %s" % title)
+		myLog("TITLE : %s" % title)
 
 		# Blit everything to the screen
 		screen.blit(background, (0, 0))
 		pygame.display.flip()	
 	except Exception, e:
-		logger.warning("Erreur drawtext")
-		logger.warning(e)
+		myLog("Erreur drawtext")
+		myLog(e)
 		raise
 	return
 # We need to update the cover that is displaying
@@ -119,10 +124,10 @@ def updateCover():
 		coverPath = os.path.join(*result)
 		img=pygame.image.load(coverPath)
 		img_size = img.get_size()
-		logger.exception("Taille image originale : %s x %s" % (img_size[0], img_size[1]))
+		myLog("Taille image originale : %s x %s" % (img_size[0], img_size[1]))
 		img_resize = pygame.transform.scale(img, (screen_w, (screen_w * img_size[1] / img_size[0])))
 		img_size = img_resize.get_size()
-		logger.exception("Taille image resize : %s x %s" % (img_size[0], img_size[1]))
+		myLog("Taille image resize : %s x %s" % (img_size[0], img_size[1]))
 		
 		background.blit(img_resize, (0,0)) 
 		screen.blit(background,(0,0))
@@ -170,28 +175,28 @@ def drawText(surface, text, color, rect, font, aa=False, bkg=None):
 # We skip to next album, the returned value is the one of the first track of next album
 def getNextAlbum(order = 1):
 	global idCurrentAlbum, idCurrentTrack
-	logger.warning("get Next album from %s " % idCurrentAlbum)
+	myLog("get Next album from %s " % idCurrentAlbum)
 	try:
-		logger.warning("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % idCurrentAlbum)
+		myLog("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % idCurrentAlbum)
 		c.execute('SELECT min(id), id_album from track where id_album > ? order by id', (idCurrentAlbum, ))
-		logger.warning("SQL END")
+		myLog("SQL END")
 	except:
-		logger.warning("ERRRRRRRRRRRRRR")
+		myLog("ERRRRRRRRRRRRRR")
 	result = c.fetchone()
-	logger.warning("SQL fetchone ok")
+	myLog("SQL fetchone ok")
 	idCurrentAlbum = result[1]
 
 	if idCurrentAlbum is None:
-		logger.warning("GNA, idCurrentAlbum is null")
+		myLog("GNA, idCurrentAlbum is null")
 		# If the query returns an empty value it means we have reached the last album, we need to start back
 		idCurrentAlbum = None
 		idCurrentTrack = None
 		idCurrentTrack = getNextTrack()
-		logger.warning("GNA, getNextTrack : %s" % idCurrentTrack)
+		myLog("GNA, getNextTrack : %s" % idCurrentTrack)
 		return idCurrentTrack
-	logger.warning("Begin update cover")
+	myLog("Begin update cover")
 	updateCover()
-	logger.warning("END of GNA")
+	myLog("END of GNA")
 	return result[0]
 	pass
 
@@ -209,11 +214,18 @@ def getNextTrack(order = True):
 		return result[0]
 	else:
 		if order == True:
-			c.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
+			rowcount = c.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
 		elif order == False:
-			c.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
-
+			rowcount = c.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
+		
 		result = c.fetchone()
+		myLog("Rowcount next track : %s [%s]" % (len(result), result[1]))
+
+		# We manage the last track of the last album
+		if result[1] is None:
+			idCurrentTrack = None
+			return getNextTrack()
+
 		if result[1] != idCurrentAlbum:
 			idCurrentAlbum = result[1]
 			updateCover()
@@ -221,13 +233,13 @@ def getNextTrack(order = True):
 	pass
 
 def playNextAlbum(channel = None):
-	logger.warning("FNC playNextAlbum")
+	myLog("FNC playNextAlbum")
 	global idCurrentTrack
 	idCurrentTrack = getNextAlbum()
 	play_song(idCurrentTrack)
 
 def playNextTrack(order = True):
-	logger.warning("FNC playNextTrack")
+	myLog("FNC playNextTrack")
 	global idCurrentTrack
 	idCurrentTrack = getNextTrack(order)
 	play_song(idCurrentTrack)
@@ -266,6 +278,7 @@ def main():
 	play_song(idCurrentTrack)
 
 	running = True
+	counter = 0
 	try:
 		while (running):
 			# We need to check that esc had not been pressed
@@ -286,9 +299,17 @@ def main():
 				elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
 					running = False
 
-			time.sleep(0.1)	
+			time.sleep(0.1)
+
+			if counter == 10:
+				counter = 0
+				myLog("Counter vaut 10, on controle l'ACTIVEPROCESS")
+				if ACTIVE_PROCESS.poll() != None:
+					myLog("ACTIVE PROCESS vaut autre chose que None, mpg321 s'est donc terminé, on va changer de chanson")
+					playNextTrack()
+			counter += 1
 	except Exception, e:
-		logger.exception("ERREUR found : %s" % e)
+		myLog("ERREUR found : %s" % e)
 	stop_song()
 	pygame.quit()
 
