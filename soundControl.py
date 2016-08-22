@@ -1,6 +1,5 @@
-#KY040 Python Class
-#Martin O'Hanlon
-#stuffaboutcode.com
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import RPi.GPIO as GPIO
 from time import sleep
@@ -52,9 +51,9 @@ if __name__ == "__main__":
 	minVolume = 65
 	stepVolume = 2
 
-	CLOCKPIN = 18
-	DATAPIN = 15
-	SWITCHPIN = 14
+	CLOCKPIN = 23 # 18
+	DATAPIN = 25 # 15
+	SWITCHPIN = 24 # 14
 	m = alsaaudio.Mixer("PCM")
 	
 	# We get the current volume
