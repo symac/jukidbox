@@ -4,7 +4,8 @@
 import os, subprocess, sys
 import pygame
 
-logEnabled = True
+logEnabled = False
+pidFile = "/media/usb/jukidbox/song.pid"
 
 if logEnabled:
 	import logging
@@ -61,11 +62,21 @@ def play_song(song_id):
 	global idCurrentAlbum
 	myLog("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
 	myLog("We are moving to %s" % song_id)
+
+	# On va stocker les infos sur la chanson en cours
+	global pidFile
+	file = open(pidFile, "w")
+	file.write("%s,%s" % (idCurrentTrack, idCurrentAlbum))
+	file.close()
+	myLog("PID file updated")
+
+	song_id = int(song_id)
+	print "We are moving to #%s#" % song_id
+	print type(song_id)
 	global ACTIVE_PROCESS
 	
 	# We first need to stop the current player before reloading it
 	c.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (song_id,))
-
 	result = c.fetchone()
 
 	track = os.path.join(result[0], result[1])
@@ -253,12 +264,15 @@ def isKeyPressed(pinNumber):
 		return True
 	return False
 
+
 def main():
 	# We need to init the display
 	global idCurrentTrack, idCurrentAlbum, screen, background
 	global screen_w, screen_h
+	global pidFile
 
 	pygame.init()
+
 	os.environ['SDL_VIDEODRIVER']="directfb"
 	pygame.mouse.set_visible(False)
 	infoObject = pygame.display.Info()
@@ -269,14 +283,22 @@ def main():
 	background = pygame.Surface(screen.get_size())
 	background.fill((255,200,0))
 	
-	# We start by loading the first track
+	# We are going to have a look at the pid file
+	with open(pidFile, 'r') as content_file:
+		content = content_file.read().strip()
+		contentTab = content.split(",")
+		idCurrentTrack = contentTab[0]
+		idCurrentAlbum = contentTab[1]
+		updateCover()
+
+	if idCurrentTrack is None:
+		idCurrentTrack = getNextTrack()
 
 	infoObject = pygame.display.Info()
 	pygame.display.set_mode((infoObject.current_w, infoObject.current_h))
 
-	idCurrentTrack = getNextTrack()
 	play_song(idCurrentTrack)
-
+	
 	running = True
 	counter = 0
 	try:

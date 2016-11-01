@@ -8,6 +8,7 @@ import os
 
 # Variables need to be set
 MP3_FOLDER = "/media/usb/jukidbox"
+#MP3_FOLDER = "/home/pi/mp3test"
 
 #conn = sqlite3.connect('%s/jukidbox.sqlite' % MP3_FOLDER)
 conn = sqlite3.connect('jukidbox.sqlite', isolation_level=None)
