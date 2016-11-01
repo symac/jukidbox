@@ -47,14 +47,14 @@ class KY040:
 if __name__ == "__main__":
 	# Default settings
 	volume = 60
-	maxVolume = 95
-	minVolume = 65
-	stepVolume = 2
+	maxVolume = 85
+	minVolume = 15
+	stepVolume = 10
 
 	CLOCKPIN = 23 # 18
 	DATAPIN = 25 # 15
 	SWITCHPIN = 24 # 14
-	m = alsaaudio.Mixer("PCM")
+	m = alsaaudio.Mixer("Speaker")
 	
 	# We get the current volume
 	volume = m.getvolume()[0]
