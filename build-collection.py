@@ -6,29 +6,52 @@ import sqlite3, sys
 # Library to iterate through folders
 import os
 
+import logging
+
 # Variables need to be set
 MP3_FOLDER = "/media/usb/jukidbox"
+DATABASE = '%s/jukidbox.sqlite' % MP3_FOLDER
 #MP3_FOLDER = "/home/pi/mp3test"
 
-#conn = sqlite3.connect('%s/jukidbox.sqlite' % MP3_FOLDER)
-conn = sqlite3.connect('jukidbox.sqlite', isolation_level=None)
+conn = sqlite3.connect(DATABASE)
 
 # Needed to store UTF8 filename
 conn.text_factory = str
 c = conn.cursor()
 
+# We need to build the database if it does not exist
+def is_table(c, table_name):
+    """ This method seems to be working now"""
+    query = "SELECT name from sqlite_sequence WHERE name='" + table_name + "';"
+    cursor = c.execute(query)
+    result = cursor.fetchone()
+    if result == None:
+        return False
+    else:
+        return True
+
+def createTableAlbum(c):
+	logging.info("Create Album table")
+	c.execute('CREATE TABLE IF NOT EXISTS "album" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "directory" VARCHAR, "cover" VARCHAR)')
+
+def createTableTrack(c):
+	logging.info("Create Track table")
+	c.execute('CREATE TABLE IF NOT EXISTS "track" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "id_album" INTEGER NOT NULL , "filename" VARCHAR NOT NULL , "number" INTEGER)')
+
+createTableAlbum(c)
+createTableTrack(c)
+
 # We need to remove any information regarding the music DB
 c.execute("delete from album")
 c.execute("delete from track")
-c.execute("delete from params where label='LAST_PLAYED'")
 
 conn.commit()
 
 # We are going to iterate through all subdirectories of MP3_FOLDER
-subdirs = [x[0] for x in os.walk(MP3_FOLDER)]                                                                            
-for subdir in subdirs: 
+subdirs = [x[0] for x in os.walk(MP3_FOLDER)]
+for subdir in subdirs:
 	print "# %s #" % subdir
-	
+
 	tracks = []
 	cover = ""
 
@@ -46,10 +69,11 @@ for subdir in subdirs:
 		print "Ajout album %s" % id_album
 
 		trackNumber = 1
-		for track in tracks:	
+		for track in tracks:
 			c.execute("insert into track (`id_album`, `filename`, `number`) values (?, ?, ?)", (id_album, track, trackNumber))
 			print "%s [%s %s]" % (track[0:30], trackNumber, c.lastrowid)
 			trackNumber += 1
-		# We commit this album 
+		# We commit this album
+conn.commit()
 conn.close()
 print "Closing"
