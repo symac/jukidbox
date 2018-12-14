@@ -36,11 +36,11 @@ class jukidbox:
 		self.prepareGpio()
 
 		self.sc = screenControl(self.logger)
-		# self.sc.setActive(True)
+		self.sc.setActive(True)
 		self.sc.prepareScreen()
 
 	def connectToDatabase(self):
-		conn = sqlite3.connect(os.path.dirname(os.path.abspath(__file__)) + '/jukidbox.sqlite',  check_same_thread = False)
+		conn = sqlite3.connect(DATABASE,  check_same_thread = False)
 		conn.text_factory = str
 		self.cursor = conn.cursor()
 		self.logger.msg("Database loaded")
@@ -55,6 +55,7 @@ class jukidbox:
 		self.logger.msg("Démarrage")
 		self.getInfoFromPidFile()
 		self.updateCover()
+		self.play_song()
 
 	def getInfoFromPidFile(self):
 		with open(pidFile, 'r') as content_file:
@@ -72,10 +73,10 @@ class jukidbox:
 		if self.idCurrentTrack is None:
 			self.cursor.execute('SELECT min(id), id_album from track order by id')
 			result = self.cursor.fetchone()
-
-			if result[1] != idCurrentAlbum:
-				idCurrentAlbum = result[1]
-				updateCover()
+			print result
+			if result[1] != self.idCurrentAlbum:
+				self.idCurrentAlbum = result[1]
+				self.updateCover()
 			return result[0]
 		else:
 			if order == True:
@@ -97,6 +98,41 @@ class jukidbox:
 			return result[0]
 		pass
 
+	def updateCover(self):
+		self.logger.msg("Loading album %s" % self.idCurrentAlbum)
+		self.cursor.execute('SELECT directory, cover from album where id = ?', (self.idCurrentAlbum, ))
+		result = self.cursor.fetchone()
+		if result[1] is not None:
+			coverPath = os.path.join(*result)
+			self.sc.updateCoverWithFile(coverPath)
+
+	# play a song based on the id
+	def play_song(self):
+		self.logger("play_song : %s / %s" % (self.idCurrentAlbum, self.idCurrentTrack))
+
+		self.updatePidFile()
+		# On va stocker les infos sur la chanson en cours
+
+		# We first need to stop the current player before reloading it
+		self.cursor.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (self.idCurrentTrack,))
+		result = self.cursor.fetchone()
+
+		track = os.path.join(result[0], result[1])
+		trackNumber = result[2]
+
+		if self.ACTIVE_PROCESS:
+			# On arrête la chanson en cours avant de lancer la suivante
+			self.stop_song()
+
+		self.ACTIVE_PROCESS = subprocess.Popen(["mpg321", "%s" % track])
+		self.sc.updateSongDescription(trackNumber, track)
+		pass
+
+	def updatePidFile(self):
+		file = open(pidFile, "w")
+		file.write("%s,%s" % (self.idCurrentTrack, self.idCurrentAlbum))
+		file.close()
+		self.logger("PID file updated")
 
 
 jk = jukidbox()
@@ -111,132 +147,6 @@ def stop_song():
 		# We terminate the process only if it is still active
 		ACTIVE_PROCESS.terminate()
 
-# play a song based on the id
-def play_song(song_id):
-	global idCurrentTrack
-	global idCurrentAlbum
-	myLog("play_song : %s / %s" % (idCurrentAlbum, idCurrentTrack))
-	myLog("We are moving to %s" % song_id)
-
-	# On va stocker les infos sur la chanson en cours
-	global pidFile
-	file = open(pidFile, "w")
-	file.write("%s,%s" % (idCurrentTrack, idCurrentAlbum))
-	file.close()
-	myLog("PID file updated")
-
-	song_id = int(song_id)
-	print "We are moving to #%s#" % song_id
-	print type(song_id)
-	global ACTIVE_PROCESS
-
-	# We first need to stop the current player before reloading it
-	c.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (song_id,))
-	result = c.fetchone()
-
-	track = os.path.join(result[0], result[1])
-	trackNumber = result[2]
-
-	if ACTIVE_PROCESS:
-		# On arrête la chanson en cours avant de lancer la suivante
-		stop_song()
-
-	ACTIVE_PROCESS = subprocess.Popen(["mpg321", "%s" % track])
-	updateSongDescription(trackNumber, track)
-	pass
-
-def updateSongDescription(number, title):
-	global screen, background
-	global screen_w, screen_h
-
-	try:
-
-		# We hide the previous data
-		pygame.draw.rect(background, pygame.Color(255, 255, 255), pygame.Rect(0, screen_w, screen_w, screen_h))
-
-		# Display some text
-		font = pygame.font.Font(None, 128)
-		text = font.render(str(number), 1, (0, 0, 0))
-		textpos = text.get_rect()
-		textpos.centerx = background.get_rect().centerx
-		textpos.centery = screen_w + 64
-
-		background.blit(text, textpos)
-
-		font = pygame.font.Font(None, 36)
-		rect = pygame.Rect(0, screen_w + 160, screen_w, screen_h)
-
-		drawText(background, os.path.basename(title), (0, 0, 0), rect , font)
-		myLog("TITLE : %s" % title)
-
-		# Blit everything to the screen
-		screen.blit(background, (0, 0))
-		pygame.display.flip()
-	except Exception, e:
-		myLog("Erreur drawtext")
-		myLog(e)
-		raise
-	return
-# We need to update the cover that is displaying
-def updateCover():
-	global screen, background
-	global screen_w, screen_h
-
-	c.execute('SELECT directory, cover from album where id = ?', (idCurrentAlbum, ))
-	result = c.fetchone()
-	if result[1] is not None:
-		# We clean the previous cover
-		pygame.draw.rect(background, pygame.Color(255, 255, 255), pygame.Rect(0, 0, screen_w, screen_w))
-		coverPath = os.path.join(*result)
-		img=pygame.image.load(coverPath)
-		img_size = img.get_size()
-		myLog("Taille image originale : %s x %s" % (img_size[0], img_size[1]))
-		img_resize = pygame.transform.scale(img, (screen_w, (screen_w * img_size[1] / img_size[0])))
-		img_size = img_resize.get_size()
-		myLog("Taille image resize : %s x %s" % (img_size[0], img_size[1]))
-
-		background.blit(img_resize, (0,0))
-		screen.blit(background,(0,0))
-		pygame.display.flip() # update the display
-	pass
-
-def drawText(surface, text, color, rect, font, aa=False, bkg=None):
-	rect = pygame.Rect(rect)
-	y = rect.top
-	lineSpacing = -2
-
-	# get the height of the font
-	fontHeight = font.size("Tg")[1]
-
-	while text:
-		i = 1
-
-		# determine if the row of text will be outside our area
-		if y + fontHeight > rect.bottom:
-			break
-
-		# determine maximum width of line
-		while font.size(text[:i])[0] < rect.width and i < len(text):
-			i += 1
-
-		# if we've wrapped the text, then adjust the wrap to the last word
-		if i < len(text):
-			i = text.rfind(" ", 0, i) + 1
-
-		# render the line and blit it to the surface
-		if bkg:
-			image = font.render(text[:i], 1, color, bkg)
-			image.set_colorkey(bkg)
-		else:
-			image = font.render(text[:i], aa, color)
-
-		surface.blit(image, (rect.left, y))
-		y += fontHeight + lineSpacing
-
-		# remove the text we just blitted
-		text = text[i:]
-
-	return text
 
 # We skip to next album, the returned value is the one of the first track of next album
 def getNextAlbum(order = 1):
@@ -296,7 +206,7 @@ def main():
 
 
 
-	play_song(idCurrentTrack)
+
 
 	running = True
 	counter = 0
