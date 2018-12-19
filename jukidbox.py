@@ -4,27 +4,24 @@
 import os, subprocess, sys
 import pygame
 from screenControl 	import screenControl
+from databaseControl 	import databaseControl
 from logger import logger
-import sqlite3
 import RPi.GPIO as GPIO
 import time
 
 logEnabled = False
 
 MP3_FOLDER = "/media/usb/jukidbox"
-DATABASE = '%s/jukidbox.sqlite' % MP3_FOLDER
-pidFile = "%s/song.pid" % MP3_FOLDER
 
 class jukidbox:
 	logger = None
 	sc = None
-	cursor = None
+	db = None
+
 	pinNextAlbum = 14
 	pinNextTrack = 18
 	pinPreviousTrack = 15
 
-	idCurrentTrack = None
-	idCurrentAlbum = None
 
 	ACTIVE_PROCESS = None
 
@@ -32,18 +29,14 @@ class jukidbox:
 		self.logger = logger()
 		self.logger.msg("Init")
 
-		self.connectToDatabase()
+		self.db = databaseControl(self.logger, MP3_FOLDER)
+
 		self.prepareGpio()
 
 		self.sc = screenControl(self.logger)
-		self.sc.setActive(True)
+		# self.sc.setActive(True)
 		self.sc.prepareScreen()
 
-	def connectToDatabase(self):
-		conn = sqlite3.connect(DATABASE,  check_same_thread = False)
-		conn.text_factory = str
-		self.cursor = conn.cursor()
-		self.logger.msg("Database loaded")
 
 	def prepareGpio(self):
 		GPIO.setmode(GPIO.BCM)
@@ -53,62 +46,19 @@ class jukidbox:
 
 	def start(self):
 		self.logger.msg("Démarrage")
-		self.getInfoFromPidFile()
 		self.updateCover()
 		self.play_song()
 
-	def getInfoFromPidFile(self):
-		with open(pidFile, 'r') as content_file:
-			content = content_file.read().strip()
-			if content != "":
-				contentTab = content.split(",")
-				self.idCurrentTrack = contentTab[0]
-				self.idCurrentAlbum = contentTab[1]
-
-		if self.idCurrentTrack is None:
-			self.idCurrentTrack = self.getNextTrack()
-
 	# get the next song to play. By default the next one, if order is set to -1, the previous one
-	def getNextTrack(self, order = True):
-		if self.idCurrentTrack is None:
-			self.cursor.execute('SELECT min(id), id_album from track order by id')
-			result = self.cursor.fetchone()
-			print result
-			if result[1] != self.idCurrentAlbum:
-				self.idCurrentAlbum = result[1]
-				self.updateCover()
-			return result[0]
-		else:
-			if order == True:
-				rowcount = self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
-			elif order == False:
-				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
-
-			result = self.cursor.fetchone()
-			myLog("Rowcount next track : %s [%s]" % (len(result), result[1]))
-
-			# We manage the last track of the last album
-			if result[1] is None:
-				idCurrentTrack = None
-				return getNextTrack()
-
-			if result[1] != idCurrentAlbum:
-				idCurrentAlbum = result[1]
-				updateCover()
-			return result[0]
-		pass
 
 	def updateCover(self):
-		self.logger.msg("Loading album %s" % self.idCurrentAlbum)
-		self.cursor.execute('SELECT directory, cover from album where id = ?', (self.idCurrentAlbum, ))
-		result = self.cursor.fetchone()
-		if result[1] is not None:
-			coverPath = os.path.join(*result)
-			self.sc.updateCoverWithFile(coverPath)
+		self.logger.msg("Loading album %s" % self.getIdCurrentAlbum())
+		coverPath = self.db.getCoverPath()
+		self.sc.updateCoverWithFile(coverPath)			
 
 	# play a song based on the id
 	def play_song(self):
-		self.logger("play_song : %s / %s" % (self.idCurrentAlbum, self.idCurrentTrack))
+		self.logger("play_song : %s / %s" % (self.getIdCurrentAlbum(), self.idCurrentTrack))
 
 		self.updatePidFile()
 		# On va stocker les infos sur la chanson en cours
@@ -130,9 +80,12 @@ class jukidbox:
 
 	def updatePidFile(self):
 		file = open(pidFile, "w")
-		file.write("%s,%s" % (self.idCurrentTrack, self.idCurrentAlbum))
+		file.write("%s,%s" % (self.idCurrentTrack, self.getIdCurrentAlbum()))
 		file.close()
 		self.logger("PID file updated")
+
+	def getIdCurrentAlbum(self):
+		return self.db.getIdCurrentAlbum()
 
 
 jk = jukidbox()
@@ -150,22 +103,22 @@ def stop_song():
 
 # We skip to next album, the returned value is the one of the first track of next album
 def getNextAlbum(order = 1):
-	global idCurrentAlbum, idCurrentTrack
-	myLog("get Next album from %s " % idCurrentAlbum)
+	global getIdCurrentAlbum, idCurrentTrack
+	myLog("get Next album from %s " % getIdCurrentAlbum())
 	try:
-		myLog("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % idCurrentAlbum)
-		c.execute('SELECT min(id), id_album from track where id_album > ? order by id', (idCurrentAlbum, ))
+		myLog("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % getIdCurrentAlbum())
+		c.execute('SELECT min(id), id_album from track where id_album > ? order by id', (getIdCurrentAlbum(), ))
 		myLog("SQL END")
 	except:
 		myLog("ERRRRRRRRRRRRRR")
 	result = c.fetchone()
 	myLog("SQL fetchone ok")
-	idCurrentAlbum = result[1]
+	getIdCurrentAlbum = result[1]
 
-	if idCurrentAlbum is None:
-		myLog("GNA, idCurrentAlbum is null")
+	if getIdCurrentAlbum() is None:
+		myLog("GNA, getIdCurrentAlbum() is null")
 		# If the query returns an empty value it means we have reached the last album, we need to start back
-		idCurrentAlbum = None
+		getIdCurrentAlbum = None
 		idCurrentTrack = None
 		idCurrentTrack = getNextTrack()
 		myLog("GNA, getNextTrack : %s" % idCurrentTrack)
@@ -203,10 +156,6 @@ def main():
 	# We need to init the display
 
 	# We are going to have a look at the pid file
-
-
-
-
 
 	running = True
 	counter = 0
