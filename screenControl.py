@@ -136,3 +136,13 @@ class screenControl:
 			text = text[i:]
 
 		return text
+
+	def checkQuit(self):
+		if self.isActive:
+			for e in pygame.event.get():
+				if e.type == pygame.QUIT:
+					return True
+				elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+					return True
+
+		return False

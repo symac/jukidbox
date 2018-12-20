@@ -51,24 +51,48 @@ class jukidbox:
 	def start(self):
 		self.logger.msg("Démarrage")
 		self.updateCover()
-		self.play_song()
+		self.playSong()
 
+		running = True
+		counter = 0
+		# try:
+		while (running):
+			if self.sc.checkQuit():
+				running = False
+
+			time.sleep(0.1)
+
+			if counter == 10:
+				counter = 0
+				self.logger("Counter vaut 10, on controle l'ACTIVEPROCESS")
+				if not self.player.isPlaying():
+					self.logger("Player not playing, on va changer de chanson")
+					self.skipToNextTrack()
+			counter += 1
+		# except Exception, e:
+		# 	self.logger("ERREUR found : %s" % e)
+		# 	self.player.stopSong()
+		# 	pygame.quit()
 
 	def updateCover(self):
 		self.logger.msg("Loading album %s" % self.db.getIdCurrentAlbum())
 		coverPath = self.db.getCoverPath()
 		self.sc.updateCoverWithFile(coverPath)
 
-	# play a song based on the id
-	def play_song(self):
-		self.logger("play_song : %s / %s" % (self.db.getIdCurrentAlbum(), self.db.getIdCurrentTrack()))
+	def playSong(self):
+		self.player.playSong(self.db.getCurrentSongPath())
+		self.sc.updateSongDescription(self.db.currentTrackNumber, self.db.currentTrackTitle)
 		self.db.updatePidFile()
 
-		self.player.play_song(self.db.getCurrentSongPath())
+	def skipToNextAlbum(self, channel = None):
+		self.logger("FNC playNextAlbum")
+		self.db.getNextAlbum()
+		self.playSong()
 
-
-		self.sc.updateSongDescription(trackNumber, track)
-		pass
+	def skipToNextTrack(self, order = True):
+		self.logger("FNC playNextTrack")
+		self.db.getNextTrack(order)
+		self.playSong()
 
 jk = jukidbox()
 jk.start()
@@ -76,18 +100,6 @@ jk.start()
 sys.exit()
 
 # We skip to next album, the returned value is the one of the first track of next album
-
-def playNextAlbum(channel = None):
-	myLog("FNC playNextAlbum")
-	global idCurrentTrack
-	idCurrentTrack = getNextAlbum()
-	play_song(idCurrentTrack)
-
-def playNextTrack(order = True):
-	myLog("FNC playNextTrack")
-	global idCurrentTrack
-	idCurrentTrack = getNextTrack(order)
-	play_song(idCurrentTrack)
 
 #GPIO.add_event_detect(pinNextAlbum, GPIO.RISING, callback=playNextAlbum, bouncetime=700)
 #GPIO.add_event_detect(pinNextTrack, GPIO.RISING, callback=playNextTrack, bouncetime=700)
@@ -99,46 +111,28 @@ def isKeyPressed(pinNumber):
 	return False
 
 
-def main():
-	# We need to init the display
+# def main():
+# 	We need to init the display
+#
+# 	We are going to have a look at the pid file
+#
+# 			We need to check that esc had not been pressed
+# 			isPressedNextAlbum = isKeyPressed(pinNextAlbum)
+# 			isPressedNextTrack = isKeyPressed(pinNextTrack)
+# 			isPressedPreviousTrack = isKeyPressed(pinPreviousTrack)
+# 			if isPressedNextTrack:
+# 				playNextTrack()
+# 			elif isPressedNextAlbum:
+# 				playNextAlbum()
+# 			elif isPressedPreviousTrack:
+# 				playNextTrack(False)
+#
+#
+#
 
-	# We are going to have a look at the pid file
-
-	running = True
-	counter = 0
-	try:
-		while (running):
-			# We need to check that esc had not been pressed
-			isPressedNextAlbum = isKeyPressed(pinNextAlbum)
-			isPressedNextTrack = isKeyPressed(pinNextTrack)
-			isPressedPreviousTrack = isKeyPressed(pinPreviousTrack)
-			if isPressedNextTrack:
-				playNextTrack()
-			elif isPressedNextAlbum:
-				playNextAlbum()
-			elif isPressedPreviousTrack:
-				playNextTrack(False)
 
 
-			for e in pygame.event.get():
-				if e.type == pygame.QUIT:
-					running = False
-				elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
-					running = False
 
-			time.sleep(0.1)
-
-			if counter == 10:
-				counter = 0
-				myLog("Counter vaut 10, on controle l'ACTIVEPROCESS")
-				if ACTIVE_PROCESS.poll() != None:
-					myLog("ACTIVE PROCESS vaut autre chose que None, mpg321 s'est donc terminé, on va changer de chanson")
-					playNextTrack()
-			counter += 1
-	except Exception, e:
-		myLog("ERREUR found : %s" % e)
-	stop_song()
-	pygame.quit()
 
 
 if __name__ == '__main__':
