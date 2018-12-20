@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sqlite3
+import sqlite3, os
+
 class databaseControl:
 	cursor = None
 	logger = None
@@ -9,15 +10,21 @@ class databaseControl:
 	idCurrentTrack = None
 	idCurrentAlbum = None
 
+	currentTrackNumber = None
+	currentTrackTitle = None
+
+
+	pidFile = None
+
 	def __init__(self, logger, mp3_folder):
 		database = '%s/jukidbox.sqlite' % mp3_folder
-		pidFile = "%s/song.pid" % mp3_folder
+		self.pidFile = "%s/song.pid" % mp3_folder
 
 		print "Loading %s" % database
 
 		self.logger = logger
 		self.connectToDatabase(database)
-		self.getInfoFromPidFile(pidFile)
+		self.getInfoFromPidFile()
 
 	def connectToDatabase(self, database):
 
@@ -27,8 +34,8 @@ class databaseControl:
 		self.cursor = conn.cursor()
 		self.logger.msg("Database loaded")
 
-	def getInfoFromPidFile(self, pidFile):
-		with open(pidFile, 'r') as content_file:
+	def getInfoFromPidFile(self):
+		with open(self.pidFile, 'r') as content_file:
 			content = content_file.read().strip()
 			if content != "":
 				contentTab = content.split(",")
@@ -38,8 +45,40 @@ class databaseControl:
 		if self.idCurrentTrack is None:
 			self.idCurrentTrack = self.getNextTrack()
 
+
+	def updatePidFile(self):
+		file = open(self.pidFile, "w")
+		file.write("%s,%s" % (self.getIdCurrentTrack(), self.getIdCurrentAlbum()))
+		file.close()
+		self.logger("PID file updated")
+
 	def getIdCurrentAlbum(self):
 		return self.idCurrentAlbum
+
+	def getIdCurrentTrack(self):
+		return self.idCurrentTrack
+
+	def getNextAlbum(order = 1):
+		self.logger("get Next album from %s " % self.getIdCurrentAlbum())
+		try:
+			self.logger("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % self.getIdCurrentAlbum())
+			self.cursor.execute('SELECT min(id), id_album from track where id_album > ? order by id', (self.getIdCurrentAlbum(), ))
+			self.logger("SQL END")
+		except:
+			self.logger("ERRRRRRRRRRRRRR")
+		result = self.cursor.fetchone()
+		self.logger("SQL fetchone ok")
+		self.idCurrentAlbum = result[1]
+
+		if self.getIdCurrentAlbum() is None:
+			self.logger("GNA, getIdCurrentAlbum() is null")
+			# If the query returns an empty value it means we have reached the last album, we need to start back
+			self.idCurrentTrack = None
+			self.idCurrentTrack = self.getNextTrack()
+			self.logger("GNA, getNextTrack : %s" % idCurrentTrack)
+		self.logger("Begin update cover")
+		self.updateCover()
+		self.logger("END of GNA")
 
 	def getNextTrack(self, order = True):
 		if self.idCurrentTrack is None:
@@ -57,7 +96,7 @@ class databaseControl:
 				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
 
 			result = self.cursor.fetchone()
-			myLog("Rowcount next track : %s [%s]" % (len(result), result[1]))
+			self.logger("Rowcount next track : %s [%s]" % (len(result), result[1]))
 
 			# We manage the last track of the last album
 			if result[1] is None:
@@ -70,7 +109,18 @@ class databaseControl:
 			return result[0]
 		pass
 
-	def gertCoverPath():
+	def getCurrentSongPath(self):
+		self.cursor.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (self.getIdCurrentTrack(),))
+		result = self.cursor.fetchone()
+
+
+		self.currentTrackNumber = result[2]
+		self.currentTrackTitle = result[1]
+
+		trackPath = os.path.join(result[0], result[1])
+		return trackPath
+
+	def getCoverPath(self):
 		coverPath = None
 		self.cursor.execute('SELECT directory, cover from album where id = ?', (self.getIdCurrentAlbum(), ))
 		result = self.cursor.fetchone()
