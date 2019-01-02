@@ -58,55 +58,61 @@ class databaseControl:
 	def getIdCurrentTrack(self):
 		return self.idCurrentTrack
 
-	def getNextAlbum(order = 1):
+	def getNextAlbum(self, order = True):
 		self.logger("get Next album from %s " % self.getIdCurrentAlbum())
 		try:
-			self.logger("SQL : SELECT min(id), id_album from track where id_album > %s order by id'" % self.getIdCurrentAlbum())
-			self.cursor.execute('SELECT min(id), id_album from track where id_album > ? order by id', (self.getIdCurrentAlbum(), ))
-			self.logger("SQL END")
+			if order:
+				self.cursor.execute('SELECT min(id), id_album from track where id_album > ? order by id', (self.getIdCurrentAlbum(), ))
+			else:
+				self.cursor.execute('SELECT min(id), id_album from track where id_album < ? order by id', (self.getIdCurrentAlbum(), ))
+
 		except:
 			self.logger("ERRRRRRRRRRRRRR")
 		result = self.cursor.fetchone()
-		self.logger("SQL fetchone ok")
+		self.logger("SQL fetchone ok : %s / %s" % (result[0], result[1]))
 		self.idCurrentAlbum = result[1]
+		self.idCurrentTrack = result[0]
 
 		if self.getIdCurrentAlbum() is None:
 			self.logger("GNA, getIdCurrentAlbum() is null")
 			# If the query returns an empty value it means we have reached the last album, we need to start back
 			self.idCurrentTrack = None
-			self.idCurrentTrack = self.getNextTrack()
-			self.logger("GNA, getNextTrack : %s" % idCurrentTrack)
-		self.logger("Begin update cover")
-		self.updateCover()
+			self.idCurrentTrack = self.getNextTrack(order)
+
+			self.logger("GNA, getNextTrack : %s" % self.idCurrentTrack)
 		self.logger("END of GNA")
 
 	def getNextTrack(self, order = True):
+		print "Current :  %s [orrder : %s]" % (self.idCurrentTrack, order)
 		if self.idCurrentTrack is None:
-			self.cursor.execute('SELECT min(id), id_album from track order by id')
+			if order:
+				print "ORDER TRUE"
+				self.cursor.execute('SELECT min(id), id_album from track order by id')
+			else:
+				print "ORDER FALSE"
+				self.cursor.execute('SELECT max(id), id_album from track order by id')
 			result = self.cursor.fetchone()
-			print result
 			if result[1] != self.idCurrentAlbum:
 				self.idCurrentAlbum = result[1]
-				self.updateCover()
-			return result[0]
+			self.idCurrentTrack = result[0]
 		else:
+			self.logger("Check min : %s" % self.idCurrentTrack)
+			self.logger("Order : %s" % order)
 			if order == True:
-				rowcount = self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (idCurrentTrack, ))
+				rowcount = self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (self.idCurrentTrack, ))
 			elif order == False:
-				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (idCurrentTrack, ))
+				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (self.idCurrentTrack, ))
 
 			result = self.cursor.fetchone()
-			self.logger("Rowcount next track : %s [%s]" % (len(result), result[1]))
+			self.idCurrentTrack = result[0]
+			self.logger("Rowcount next track : %s [%s / %s]" % (len(result), result[0], result[1]))
 
 			# We manage the last track of the last album
 			if result[1] is None:
-				idCurrentTrack = None
-				return getNextTrack()
-
-			if result[1] != idCurrentAlbum:
-				idCurrentAlbum = result[1]
-				updateCover()
-			return result[0]
+				self.idCurrentTrack = None
+				self.getNextTrack(order)
+			elif result[1] != self.idCurrentAlbum:
+				self.idCurrentAlbum = result[1]
 		pass
 
 	def getCurrentSongPath(self):
