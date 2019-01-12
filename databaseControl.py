@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3, os
+import RPi.GPIO as GPIO
 
 class databaseControl:
 	cursor = None
@@ -13,6 +14,7 @@ class databaseControl:
 	currentTrackNumber = None
 	currentTrackTitle = None
 
+	shufflePin = 15;
 
 	pidFile = None
 
@@ -27,7 +29,11 @@ class databaseControl:
 		self.getInfoFromPidFile()
 
 	def connectToDatabase(self, database):
+		self.logger.msg("Init DB")
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setup(self.shufflePin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+		print GPIO.input(self.shufflePin)
 		conn = sqlite3.connect(database,  check_same_thread = False)
 
 		conn.text_factory = str
@@ -84,6 +90,9 @@ class databaseControl:
 
 	def getNextTrack(self, order = True):
 		print "Current :  %s [orrder : %s]" % (self.idCurrentTrack, order)
+		if self.randomActivated():
+			self.logger("Random activated")
+			
 		if self.idCurrentTrack is None:
 			if order:
 				print "ORDER TRUE"
@@ -114,6 +123,12 @@ class databaseControl:
 			elif result[1] != self.idCurrentAlbum:
 				self.idCurrentAlbum = result[1]
 		pass
+
+	def randomActivated(self):
+		if GPIO.input(self.shufflePin):
+			return False
+		else:
+			return True
 
 	def getCurrentSongPath(self):
 		self.cursor.execute('SELECT album.directory, track.filename, track.number FROM track, album WHERE track.id_album = album.id and track.id=?', (self.getIdCurrentTrack(),))
