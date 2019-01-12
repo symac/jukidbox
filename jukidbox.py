@@ -103,7 +103,6 @@ class jukidbox:
 			self.db.getNextTrack()
 			self.playSong()
 		elif pinNumber == self.pinPreviousTrack:
-			print "PREVIOUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUs"
 			self.db.getNextTrack(False)
 			self.playSong()
 
