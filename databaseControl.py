@@ -41,15 +41,16 @@ class databaseControl:
 		self.logger.msg("Database loaded")
 
 	def getInfoFromPidFile(self):
-		with open(self.pidFile, 'r') as content_file:
-			content = content_file.read().strip()
-			if content != "":
-				contentTab = content.split(",")
-				self.idCurrentTrack = contentTab[0]
-				self.idCurrentAlbum = contentTab[1]
+		if os.path.isfile(self.pidFile):
+			with open(self.pidFile, 'r') as content_file:
+				content = content_file.read().strip()
+				if content != "":
+					contentTab = content.split(",")
+					self.idCurrentTrack = contentTab[0]
+					self.idCurrentAlbum = contentTab[1]
 
 		if self.idCurrentTrack is None:
-			self.idCurrentTrack = self.getNextTrack()
+			self.getNextTrack()
 
 
 	def updatePidFile(self):
@@ -92,7 +93,7 @@ class databaseControl:
 		print "Current :  %s [orrder : %s]" % (self.idCurrentTrack, order)
 		if self.randomActivated():
 			self.logger("Random activated")
-			
+
 		if self.idCurrentTrack is None:
 			if order:
 				print "ORDER TRUE"
@@ -107,7 +108,10 @@ class databaseControl:
 		else:
 			self.logger("Check min : %s" % self.idCurrentTrack)
 			self.logger("Order : %s" % order)
-			if order == True:
+
+			if self.randomActivated():
+				rowcount = self.cursor.execute('SELECT id, id_album from track order by random() limit 0,1')
+			elif order == True:
 				rowcount = self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (self.idCurrentTrack, ))
 			elif order == False:
 				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (self.idCurrentTrack, ))
