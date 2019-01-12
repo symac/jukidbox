@@ -76,9 +76,11 @@ class databaseControl:
 		self.logger("get Next album from %s " % self.getIdCurrentAlbum())
 		try:
 			if order:
-				self.cursor.execute('SELECT min(id), id_album from track where id_album > ? order by id', (self.getIdCurrentAlbum(), ))
+				self.logger("Ordre normal")
+				self.cursor.execute('SELECT min(id), id_album from track where id_album > ?', (self.getIdCurrentAlbum(), ))
 			else:
-				self.cursor.execute('SELECT min(id), id_album from track where id_album < ? order by id', (self.getIdCurrentAlbum(), ))
+				self.logger("ordre reverse")
+				self.cursor.execute('SELECT id, id_album from track where id_album < ? order by id_album desc, id asc', (self.getIdCurrentAlbum(), ))
 
 		except:
 			self.logger("ERRRRRRRRRRRRRR")
