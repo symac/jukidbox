@@ -3,6 +3,8 @@
 
 import sqlite3, os
 import RPi.GPIO as GPIO
+import sys
+
 
 class databaseControl:
 	cursor = None
@@ -17,15 +19,20 @@ class databaseControl:
 	shufflePin = 15;
 
 	pidFile = None
+	md5File = None
+
+	MP3_FOLDER = None
 
 	def __init__(self, logger, mp3_folder):
+		self.logger = logger
+		self.MP3_FOLDER = mp3_folder
+
 		database = '%s/jukidbox.sqlite' % mp3_folder
 		self.pidFile = "%s/song.pid" % mp3_folder
+		self.md5File = "%s/md5.txt" % mp3_folder
 
-		print "Loading %s" % database
-
-		self.logger = logger
 		self.connectToDatabase(database)
+		self.updateDatabaseIfNeeded()
 		self.getInfoFromPidFile()
 
 	def connectToDatabase(self, database):
@@ -152,3 +159,69 @@ class databaseControl:
 		if result[1] is not None:
 			coverPath = os.path.join(*result)
 		return coverPath
+
+	def updateDatabaseIfNeeded(self):
+		import subprocess
+
+		mp3CurrentSize = subprocess.check_output(['du', '-s', self.MP3_FOLDER]).split()[0].decode('utf-8')
+		mp3PreviousSize = 0
+
+		if os.path.isfile(self.md5File):
+			file = open(self.md5File, "r")
+			mp3PreviousSize = file.read()
+			file.close()
+
+		if mp3CurrentSize != mp3PreviousSize:
+			self.logger("Need update")
+			self.updateDatabase()
+			file = open(self.md5File, "w")
+			file.write("%s" % (mp3CurrentSize))
+			file.close()
+
+	def updateDatabase(self):
+		self.resetDatabase()
+
+		# We are going to iterate through all subdirectories of MP3_FOLDER
+		subdirs = [x[0] for x in os.walk(self.MP3_FOLDER)]
+		for subdir in subdirs:
+			self.logger("# %s #" % subdir)
+
+			tracks = []
+			cover = ""
+
+			files = os.walk(subdir).next()[2]
+			if (len(files) > 0):
+				for file in sorted(files):
+					if file.upper().endswith("MP3") or file.upper().endswith("OGG"):
+						tracks.append(file)
+					elif file.upper().endswith("JPG"):
+						cover = file
+
+				# We start by creating an entry for the album
+				self.cursor.execute("insert into album (`directory`, `cover`) values (?, ?)",  (subdir, cover))
+				id_album = self.cursor.lastrowid
+				self.logger("Ajout album %s" % id_album)
+
+				trackNumber = 1
+				for track in tracks:
+					self.cursor.execute("insert into track (`id_album`, `filename`, `number`) values (?, ?, ?)", (id_album, track, trackNumber))
+					self.logger("%s [%s %s]" % (track[0:30], trackNumber, self.cursor.lastrowid))
+					trackNumber += 1
+				# We commit this album
+		self.logger("Closing connection, update finished")
+
+	def resetDatabase(self):
+		self.createTableAlbum()
+		self.createTableTrack()
+
+		# We need to remove any information regarding the music DB
+		self.cursor.execute("delete from album")
+		self.cursor.execute("delete from track")
+
+	def createTableAlbum(self):
+		self.logger("Create Album table")
+		self.cursor.execute('CREATE TABLE IF NOT EXISTS "album" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "directory" VARCHAR, "cover" VARCHAR)')
+
+	def createTableTrack(self):
+		self.logger("Create Track table")
+		self.cursor.execute('CREATE TABLE IF NOT EXISTS "track" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "id_album" INTEGER NOT NULL , "filename" VARCHAR NOT NULL , "number" INTEGER)')
