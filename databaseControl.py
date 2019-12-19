@@ -4,6 +4,7 @@
 import sqlite3, os
 import RPi.GPIO as GPIO
 import sys
+import re
 
 
 class databaseControl:
@@ -150,6 +151,10 @@ class databaseControl:
 
 		self.currentTrackNumber = result[2]
 		self.currentTrackTitle = result[1]
+
+		# Cleaning the track title
+		self.currentTrackTitle = re.sub("^\d*[^A-Za-z0-9]*", "", self.currentTrackTitle)
+		self.currentTrackTitle = re.sub("\.mp3", "", self.currentTrackTitle)
 
 		trackPath = os.path.join(result[0], result[1])
 		return trackPath
