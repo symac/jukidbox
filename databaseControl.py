@@ -9,6 +9,7 @@ import re
 
 class databaseControl:
 	cursor = None
+	conn = None
 	logger = None
 
 	idCurrentTrack = None
@@ -33,6 +34,8 @@ class databaseControl:
 		self.md5File = "%s/md5.txt" % mp3_folder
 
 		self.connectToDatabase(database)
+
+		print "Connexion a %s" % database
 		self.updateDatabaseIfNeeded()
 		self.getInfoFromPidFile()
 
@@ -42,10 +45,10 @@ class databaseControl:
 		GPIO.setup(self.shufflePin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 		print GPIO.input(self.shufflePin)
-		conn = sqlite3.connect(database,  check_same_thread = False)
+		self.conn = sqlite3.connect(database,  check_same_thread = False)
 
-		conn.text_factory = str
-		self.cursor = conn.cursor()
+		self.conn.text_factory = str
+		self.cursor = self.conn.cursor()
 		self.logger.msg("Database loaded")
 
 	def getInfoFromPidFile(self):
@@ -83,22 +86,25 @@ class databaseControl:
 			else:
 				self.logger("ordre reverse")
 				self.cursor.execute('SELECT id, id_album from track where id_album < ? order by id_album desc, id asc', (self.getIdCurrentAlbum(), ))
-
 		except:
 			self.logger("ERRRRRRRRRRRRRR")
+
 		result = self.cursor.fetchone()
-		self.logger("SQL fetchone ok : %s / %s" % (result[0], result[1]))
+
+		if result is None:
+			# Premier album, rien avant
+			self.logger(">>> 1 RESULT NONE")
+			self.cursor.execute('SELECT id, id_album from track order by id_album desc, id asc')
+			result = self.cursor.fetchone()
+		elif result[0] is None:
+			# Dernier album, plus rien après
+			self.cursor.execute('SELECT id, id_album from track order by id_album asc, id asc')
+			result = self.cursor.fetchone()
+
 		self.idCurrentAlbum = result[1]
 		self.idCurrentTrack = result[0]
 
-		if self.getIdCurrentAlbum() is None:
-			self.logger("GNA, getIdCurrentAlbum() is null")
-			# If the query returns an empty value it means we have reached the last album, we need to start back
-			self.idCurrentTrack = None
-			self.idCurrentTrack = self.getNextTrack(order)
-
-			self.logger("GNA, getNextTrack : %s" % self.idCurrentTrack)
-		self.logger("END of GNA")
+		self.logger("Result : %s / %s" % (self.getIdCurrentAlbum(), self.getIdCurrentTrack()))
 
 	def getNextTrack(self, order = True):
 		print "Current :  %s [orrder : %s]" % (self.idCurrentTrack, order)
@@ -217,6 +223,8 @@ class databaseControl:
 					self.logger("%s [%s %s]" % (track[0:30], trackNumber, self.cursor.lastrowid))
 					trackNumber += 1
 				# We commit this album
+				self.conn.commit()
+
 		self.logger("Closing connection, update finished")
 
 	def resetDatabase(self):
