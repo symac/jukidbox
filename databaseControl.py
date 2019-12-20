@@ -60,12 +60,13 @@ class databaseControl:
 		if self.idCurrentTrack is None:
 			self.getNextTrack()
 
+	def writeToPidFile(self, line = ''):
+		file = open(self.pidFile, "w")
+		file.write(line)
+		file.close()
 
 	def updatePidFile(self):
-		file = open(self.pidFile, "w")
-		file.write("%s,%s" % (self.getIdCurrentTrack(), self.getIdCurrentAlbum()))
-		file.close()
-		self.logger("PID file updated")
+	    self.writeToPidFile("%s,%s" % (self.getIdCurrentTrack(), self.getIdCurrentAlbum()))
 
 	def getIdCurrentAlbum(self):
 		return self.idCurrentAlbum
@@ -184,6 +185,7 @@ class databaseControl:
 			file = open(self.md5File, "w")
 			file.write("%s" % (mp3CurrentSize))
 			file.close()
+			self.writeToPidFile("")
 
 	def updateDatabase(self):
 		self.resetDatabase()

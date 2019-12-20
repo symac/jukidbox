@@ -38,7 +38,7 @@ class jukidbox:
 		self.prepareGpio()
 
 		self.sc = screenControl(self.logger)
-		# self.sc.setActive(True)
+		self.sc.setActive(True)
 		self.sc.prepareScreen()
 
 		self.player = player()
@@ -81,6 +81,7 @@ class jukidbox:
 		# 	pygame.quit()
 
 	def updateCover(self):
+		self.logger.msg("FN::UpdateCover %s - %s" % (self.idCurrentAlbumDisplayed, self.db.getIdCurrentAlbum()))
 		if self.idCurrentAlbumDisplayed != self.db.getIdCurrentAlbum():
 			self.logger.msg("Loading album %s" % self.db.getIdCurrentAlbum())
 			coverPath = self.db.getCoverPath()
@@ -107,6 +108,8 @@ class jukidbox:
 			self.playSong()
 
 		self.updateCover()
+		self.logger("")
+		self.logger("")
 
 jk = jukidbox()
 jk.start()
