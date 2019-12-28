@@ -78,22 +78,22 @@ class databaseControl:
 		return self.idCurrentTrack
 
 	def getNextAlbum(self, order = True):
-		self.logger("get Next album from %s " % self.getIdCurrentAlbum())
+		self.logger.msg("get Next album from %s " % self.getIdCurrentAlbum())
 		try:
 			if order:
-				self.logger("Ordre normal")
+				self.logger.msg("Ordre normal")
 				self.cursor.execute('SELECT min(id), id_album from track where id_album > ?', (self.getIdCurrentAlbum(), ))
 			else:
-				self.logger("ordre reverse")
+				self.logger.msg("ordre reverse")
 				self.cursor.execute('SELECT id, id_album from track where id_album < ? order by id_album desc, id asc', (self.getIdCurrentAlbum(), ))
 		except:
-			self.logger("ERRRRRRRRRRRRRR")
+			self.logger.msg("ERRRRRRRRRRRRRR")
 
 		result = self.cursor.fetchone()
 
 		if result is None:
 			# Premier album, rien avant
-			self.logger(">>> 1 RESULT NONE")
+			self.logger.msg(">>> 1 RESULT NONE")
 			self.cursor.execute('SELECT id, id_album from track order by id_album desc, id asc')
 			result = self.cursor.fetchone()
 		elif result[0] is None:
@@ -104,14 +104,15 @@ class databaseControl:
 		self.idCurrentAlbum = result[1]
 		self.idCurrentTrack = result[0]
 
-		self.logger("Result : %s / %s" % (self.getIdCurrentAlbum(), self.getIdCurrentTrack()))
+		self.logger.msg("Result : %s / %s" % (self.getIdCurrentAlbum(), self.getIdCurrentTrack()))
 
 	def getNextTrack(self, order = True):
-		print "Current :  %s [orrder : %s]" % (self.idCurrentTrack, order)
+		self.logger.msg("DB::GNT:: Current :  %s [orrder : %s]" % (self.idCurrentTrack, order))
 		if self.randomActivated():
-			self.logger("Random activated")
+			self.logger.msg("DB::GNT:: Random activated")
 
 		if self.idCurrentTrack is None:
+			self.logger.msg("DB::GNT:: idCurrentTrack None")
 			if order:
 				print "ORDER TRUE"
 				self.cursor.execute('SELECT min(id), id_album from track order by id')
@@ -123,27 +124,30 @@ class databaseControl:
 				self.idCurrentAlbum = result[1]
 			self.idCurrentTrack = result[0]
 		else:
-			self.logger("Check min : %s" % self.idCurrentTrack)
-			self.logger("Order : %s" % order)
+			self.logger.msg("DB::GNT:: idCurrentTrack OK")
+
+			self.logger.msg("Check min : %s" % self.idCurrentTrack)
+			self.logger.msg("Order : %s" % order)
 
 			if self.randomActivated():
-				rowcount = self.cursor.execute('SELECT id, id_album from track order by random() limit 0,1')
+				self.cursor.execute('SELECT id, id_album from track order by random() limit 0,1')
 			elif order == True:
-				rowcount = self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (self.idCurrentTrack, ))
+				self.cursor.execute('SELECT min(id), id_album from track where id > ? order by id', (self.idCurrentTrack, ))
 			elif order == False:
-				rowcount = self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (self.idCurrentTrack, ))
+				self.cursor.execute('SELECT max(id), id_album from track where id < ? order by id', (self.idCurrentTrack, ))
 
 			result = self.cursor.fetchone()
 			self.idCurrentTrack = result[0]
-			self.logger("Rowcount next track : %s [%s / %s]" % (len(result), result[0], result[1]))
+			self.logger.msg("Rowcount next track : %s [%s / %s]" % (len(result), result[0], result[1]))
 
 			# We manage the last track of the last album
 			if result[1] is None:
+				self.logger.msg("DB::GNT:: result1 NONE ")
 				self.idCurrentTrack = None
 				self.getNextTrack(order)
 			elif result[1] != self.idCurrentAlbum:
+				self.logger.msg("DB::GNT:: result1 diff de 1")
 				self.idCurrentAlbum = result[1]
-		pass
 
 	def randomActivated(self):
 		if GPIO.input(self.shufflePin):
@@ -186,7 +190,7 @@ class databaseControl:
 			file.close()
 
 		if mp3CurrentSize != mp3PreviousSize:
-			self.logger("Need update")
+			self.logger.msg("Need update")
 			self.updateDatabase()
 			file = open(self.md5File, "w")
 			file.write("%s" % (mp3CurrentSize))
@@ -199,7 +203,7 @@ class databaseControl:
 		# We are going to iterate through all subdirectories of MP3_FOLDER
 		subdirs = [x[0] for x in os.walk(self.MP3_FOLDER)]
 		for subdir in subdirs:
-			self.logger("# %s #" % subdir)
+			self.logger.msg("# %s #" % subdir)
 
 			tracks = []
 			cover = ""
@@ -215,17 +219,17 @@ class databaseControl:
 				# We start by creating an entry for the album
 				self.cursor.execute("insert into album (`directory`, `cover`) values (?, ?)",  (subdir, cover))
 				id_album = self.cursor.lastrowid
-				self.logger("Ajout album %s" % id_album)
+				self.logger.msg("Ajout album %s" % id_album)
 
 				trackNumber = 1
 				for track in tracks:
 					self.cursor.execute("insert into track (`id_album`, `filename`, `number`) values (?, ?, ?)", (id_album, track, trackNumber))
-					self.logger("%s [%s %s]" % (track[0:30], trackNumber, self.cursor.lastrowid))
+					self.logger.msg("%s [%s %s]" % (track[0:30], trackNumber, self.cursor.lastrowid))
 					trackNumber += 1
 				# We commit this album
 				self.conn.commit()
 
-		self.logger("Closing connection, update finished")
+		self.logger.msg("Closing connection, update finished")
 
 	def resetDatabase(self):
 		self.createTableAlbum()
@@ -236,9 +240,9 @@ class databaseControl:
 		self.cursor.execute("delete from track")
 
 	def createTableAlbum(self):
-		self.logger("Create Album table")
+		self.logger.msg("Create Album table")
 		self.cursor.execute('CREATE TABLE IF NOT EXISTS "album" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "directory" VARCHAR, "cover" VARCHAR)')
 
 	def createTableTrack(self):
-		self.logger("Create Track table")
+		self.logger.msg("Create Track table")
 		self.cursor.execute('CREATE TABLE IF NOT EXISTS "track" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "id_album" INTEGER NOT NULL , "filename" VARCHAR NOT NULL , "number" INTEGER)')
