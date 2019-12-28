@@ -34,7 +34,6 @@ class jukidbox:
 		self.logger.msg("Init")
 
 		self.db = databaseControl(self.logger, MP3_FOLDER)
-
 		self.prepareGpio()
 
 		self.sc = screenControl(self.logger)
@@ -51,10 +50,10 @@ class jukidbox:
 		GPIO.setup(self.pinNextTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		GPIO.setup(self.pinPreviousTrack, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-		GPIO.add_event_detect(self.pinNextAlbum, GPIO.RISING, callback=self.manageButtons, bouncetime=700)
-		GPIO.add_event_detect(self.pinPreviousAlbum, GPIO.RISING, callback=self.manageButtons, bouncetime=700)
-		GPIO.add_event_detect(self.pinNextTrack, GPIO.RISING, callback=self.manageButtons, bouncetime=700)
-		GPIO.add_event_detect(self.pinPreviousTrack, GPIO.RISING, callback=self.manageButtons, bouncetime=700)
+		GPIO.add_event_detect(self.pinNextAlbum, GPIO.RISING, callback=self.manageButtons, bouncetime=500)
+		GPIO.add_event_detect(self.pinPreviousAlbum, GPIO.RISING, callback=self.manageButtons, bouncetime=500)
+		GPIO.add_event_detect(self.pinNextTrack, GPIO.RISING, callback=self.manageButtons, bouncetime=1000)
+		GPIO.add_event_detect(self.pinPreviousTrack, GPIO.RISING, callback=self.manageButtons, bouncetime=1000)
 
 	def start(self):
 		self.updateCover()
@@ -66,14 +65,20 @@ class jukidbox:
 		while (running):
 			if self.sc.checkQuit():
 				running = False
+				self.player.stopSong()
+
 
 			time.sleep(0.1)
 
 			if counter == 10:
 				counter = 0
-				if not self.player.isPlaying():
-					self.db.getNextTrack()
-					self.playSong()
+				if self.buttonManager == 1:
+					self.logger.msg("Currenly managing buttons")
+				else:
+					if not self.player.isPlaying():
+						self.db.getNextTrack()
+						self.updateCover()
+						self.playSong()
 			counter += 1
 		# except Exception, e:
 		# 	self.logger("ERREUR found : %s" % e)
@@ -93,23 +98,36 @@ class jukidbox:
 		self.sc.updateSongDescription(self.db.currentTrackNumber, self.db.currentTrackTitle)
 		self.db.updatePidFile()
 
-	def manageButtons(self, pinNumber):
-		if pinNumber == self.pinNextAlbum:
-			self.db.getNextAlbum()
-			self.playSong()
-		elif pinNumber == self.pinPreviousAlbum:
-			self.db.getNextAlbum(False)
-			self.playSong()
-		elif pinNumber == self.pinNextTrack:
-			self.db.getNextTrack()
-			self.playSong()
-		elif pinNumber == self.pinPreviousTrack:
-			self.db.getNextTrack(False)
-			self.playSong()
+	buttonManager = 0
 
-		self.updateCover()
-		self.logger("")
-		self.logger("")
+	def manageButtons(self, pinNumber):
+		self.logger.msg("MANAGE BUTTON :: %s" % pinNumber)
+		if self.buttonManager == 1:
+			self.logger.msg("Already managing buttons")
+		else:
+			self.buttonManager = 1
+			if pinNumber == self.pinNextAlbum:
+				self.db.getNextAlbum()
+				self.playSong()
+			elif pinNumber == self.pinPreviousAlbum:
+				self.db.getNextAlbum(False)
+				self.playSong()
+			elif pinNumber == self.pinNextTrack:
+				self.logger.msg("MB 1 %s" % self.buttonManager)
+				self.db.getNextTrack()
+				self.logger.msg("MB 2 %s" % self.buttonManager)
+				self.playSong()
+				self.logger.msg("MB 3 %s" % self.buttonManager)
+			elif pinNumber == self.pinPreviousTrack:
+				self.db.getNextTrack(False)
+				self.playSong()
+
+			self.updateCover()
+			self.logger("")
+			self.logger("")
+			self.logger("")
+			self.logger("")
+		self.buttonManager = 0
 
 jk = jukidbox()
 jk.start()
