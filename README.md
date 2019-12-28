@@ -4,19 +4,19 @@ Jukebox for kid based on Raspberry Pi.
 # Hardware
 
 - écran de radar de recul de voiture : [Rear view 4,3"](https://www.ebay.fr/sch/i.html?_from=R40&_sacat=0&_nkw=rear+view+4%2C3&LH_PrefLoc=2&_sop=15) 
-![display](/home/nous/dev/jukidbox/img/screen.jpg) 
+![display](img/screen.jpg) 
 - boutons d'arcade : [arcade button](https://www.ebay.fr/sch/i.html?_from=R40&_sacat=0&_nkw=arcade+button&LH_PrefLoc=2&_sop=15) 
-![](/home/nous/dev/jukidbox/img/arcade_button.jpg) 
+![](img/arcade_button.jpg) 
 - un slider pour la gestion du volume : [sliding potentiometer 10k](https://www.ebay.fr/sch/i.html?_odkw=arcade+button&LH_PrefLoc=2&_sop=15&_osacat=0&_from=R40&_trksid=p2045573.m570.l1313.TR3.TRC2.A0.H0.Xpotentiometer+10k+sliding.TRS0&_nkw=potentiometer+10k+sliding&_sacat=0) 
- ![](/home/nous/dev/jukidbox/img/sliding.jpg) 
+ ![](img/sliding.jpg) 
  - un convertisseur pour récupérer une valeur numérique à partir du potentiomètre : [MCP 3008](https://www.ebay.fr/itm/MCP3008-I-P-Convertisseur-analogique-vers-num%C3%A9rique-Octal-16DIP/152465009958?ssPageName=STRK%3AMEBIDX%3AIT&_trksid=p2057872.m2749.l2649)
- ![](/home/nous/dev/jukidbox/img/mcp3008.jpg) 
+ ![](img/mcp3008.jpg) 
  - une carte son audio. On en trouve tout un tas sous la dénomation 3D sound qui permettent d'avoir un son correct. On peut aussi utiliser la sortie jack du RPi en direct, mais la qualité reste limitée sur les premières générations de Rpi.
- ![](/home/nous/dev/jukidbox/img/usb_audio.jpeg)
+ ![](img/usb_audio.jpeg)
  - un amplificateur audio en mono ([de ce type](https://www.adafruit.com/product/2130)) qui permet de prendre le son de la carte USB pour l'envoyer sur les enceintes en l'amplifiant
-  ![](/home/nous/dev/jukidbox/img/pam8302.jpg) 
+  ![](img/pam8302.jpg) 
  - une alimentation pour alimenter le tout. Possibilité que l'écran soit en 5V selon les configurations, mais pas toujours le cas. Dans le doute, utilisation d'une alimentation mixte 12V (écran) / 5V (Raspberry). Dans mon cas [une meanwell](https://fr.rs-online.com/web/p/alimentations-a-decoupage/6447073/). Un peut chère mais semble secure. Parmi les autres options celle de reprendre une alimentation de disque dur externe qui, il y a quelques années, demandait du 12/5v ([notes sur le blog](http://www.geobib.fr/blog/2016-09-25-alimentation)).
- ![](/home/nous/dev/jukidbox/img/alim.jpeg).
+ ![](img/alim.jpeg).
  - Petites choses variées : 
  	- un cable d'alimentation générale;
  	- un interrupteur pour la mise en route générale;
