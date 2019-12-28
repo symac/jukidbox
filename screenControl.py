@@ -83,7 +83,7 @@ class screenControl:
 				self.background.blit(text, textpos)
 
 				font = pygame.font.Font(None, 36)
-				rect = pygame.Rect(0, self.screen_w + 160, self.screen_w, self.screen_h)
+				rect = pygame.Rect(10, self.screen_w + 160, self.screen_w, self.screen_h)
 
 				self.drawText(self.background, os.path.basename(title), (0, 0, 0), rect , font)
 				self.logger("SC::Title updated : %s" % title)
