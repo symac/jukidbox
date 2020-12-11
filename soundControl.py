@@ -90,7 +90,7 @@ class soundController:
 
 	def checkForUpdate(self):
 		trim_pot_changed = False
-		tolerance = 5       # to keep from being jittery we'll only volume when the pot has moved more than 5 'counts'
+		tolerance = 10       # to keep from being jittery we'll only volume when the pot has moved more than 5 'counts'
 
 		# read the analog pin
 		trim_pot = self.readadc(self.potentiometer_adc, self.SPICLK, self.SPIMOSI, self.SPIMISO, self.SPICS)
@@ -115,7 +115,7 @@ class soundController:
 			self.m.setvolume(set_volume_absolute)
 
 			# save the potentiometer reading for the next loop
-			last_read = trim_pot
+			self.last_read = trim_pot
 
 		# hang out and do nothing for a half second
 		time.sleep(0.5)
