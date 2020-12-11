@@ -8,14 +8,15 @@ import RPi.GPIO as GPIO
 import alsaaudio
 import logging, sys
 import math
+from iniparse import INIConfig
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
-
-SPICLK = 18
-SPIMISO = 23
-SPIMOSI = 24
-SPICS = 25
+config = INIConfig(file('config.ini'))
+SPICLK = int(config['potentiometer']['SPICLK'])
+SPIMISO = int(config['potentiometer']['SPIMISO'])
+SPIMOSI = int(config['potentiometer']['SPIMOSI'])
+SPICS = int(config['potentiometer']['SPICS'])
 
 GPIO.setmode(GPIO.BCM)
 # set up the SPI interface pins
