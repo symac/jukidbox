@@ -29,13 +29,12 @@ class databaseControl:
 		self.logger = logger
 		self.MP3_FOLDER = mp3_folder
 
-		database = '%s/jukidbox.sqlite' % mp3_folder
-		self.pidFile = "%s/song.pid" % mp3_folder
-		self.md5File = "%s/md5.txt" % mp3_folder
-
-		self.connectToDatabase(database)
+		database = '/home/rpi/jukidbox.sqlite'
+		self.pidFile = "/home/rpi/song.pid"
+		self.md5File = "/home/rpi/md5.txt"
 
 		print "Connexion a %s" % database
+		self.connectToDatabase(database)
 		self.updateDatabaseIfNeeded()
 		self.getInfoFromPidFile()
 
@@ -150,6 +149,7 @@ class databaseControl:
 				self.idCurrentAlbum = result[1]
 
 	def randomActivated(self):
+		return False
 		if GPIO.input(self.shufflePin):
 			return False
 		else:
