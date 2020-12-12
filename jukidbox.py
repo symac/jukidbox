@@ -13,6 +13,7 @@ import time
 logEnabled = False
 
 MP3_FOLDER = "/media/usb/jukidbox"
+from iniparse import INIConfig
 
 class jukidbox:
 	logger = None
@@ -20,10 +21,11 @@ class jukidbox:
 	db = None
 	player = None
 
-	pinNextAlbum = 26
-	pinPreviousAlbum = 6
-	pinNextTrack = 19
-	pinPreviousTrack = 13
+	config = None
+	pinNextAlbum = None
+	pinPreviousAlbum = None
+	pinNextTrack = None
+	pinPreviousTrack = None
 
 	idCurrentAlbumDisplayed = None
 
@@ -32,6 +34,13 @@ class jukidbox:
 	def __init__(self):
 		self.logger = logger()
 		self.logger.msg("Init")
+
+		self.config = INIConfig(file('config.ini'))
+		self.pinNextAlbum = int(self.config['button']['NextAlbum'])
+		self.pinPreviousAlbum = int(self.config['button']['PreviousAlbum'])
+		self.pinNextTrack = int(self.config['button']['NextTrack'])
+		self.pinPreviousTrack = int(self.config['button']['PreviousTrack'])
+
 
 		self.db = databaseControl(self.logger, MP3_FOLDER)
 		self.prepareGpio()
