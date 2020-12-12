@@ -9,7 +9,6 @@ class screenControl:
 	screen_w = None
 	screen_h = None
 	background = None
-	orientation = 1 # default is horizontal
 
 	def __init__(self, logger):
 		self.logger = logger
@@ -33,13 +32,13 @@ class screenControl:
 		infoObject = pygame.display.Info()
 		pygame.display.set_mode((infoObject.current_w, infoObject.current_h))
 
-		self.logger("SC::Ecran initialé : W : %s / H : %s" % (self.screen_w, self.screen_h))
-
-	def setVertical(self):
-		self.orientation = 0
+		self.logger("SC::Ecran initial : W : %s / H : %s" % (self.screen_w, self.screen_h))
 
 	def isVertical(self):
-		return self.orientation == 0
+		if self.screen_w < self.screen_h:
+			return True
+		else:
+			return False
 
 	def setActive(self, value):
 		self.isActive = value
