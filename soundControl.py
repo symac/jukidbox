@@ -26,7 +26,7 @@ GPIO.setup(SPICLK, GPIO.OUT)
 GPIO.setup(SPICS, GPIO.OUT)
 
 class soundController:
-	DEBUG = 0
+	DEBUG = 1
 
 	# Default settings
 	maxVolume = 85
@@ -44,7 +44,7 @@ class soundController:
 
 	def __init__(self):
 		GPIO.setmode(GPIO.BCM)
-		self.m = alsaaudio.Mixer("Speaker", cardindex=1)
+		self.m = alsaaudio.Mixer("Speaker", cardindex=0)
 
 		GPIO.setup(self.SPIMOSI, GPIO.OUT)
 		GPIO.setup(self.SPIMISO, GPIO.IN)
@@ -99,8 +99,6 @@ class soundController:
 		pot_adjust = abs(trim_pot - self.last_read)
 
 		logging.error("trim_pot : %s" % trim_pot)
-		logging.info("pot_adjust : %s" % pot_adjust)
-		logging.info("last_read : %s" % self.last_read)
 
 		if ( pot_adjust > tolerance ):
 			trim_pot_changed = True
@@ -114,7 +112,7 @@ class soundController:
 
 			set_volume_absolute = self.getAbsoluteVolume(set_volume_pct)
 			self.m.setvolume(set_volume_absolute)
-
+			logging.info("Volume passe a %s" % set_volume_absolute);
 			# save the potentiometer reading for the next loop
 			self.last_read = trim_pot
 
