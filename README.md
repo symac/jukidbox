@@ -13,6 +13,8 @@ Jukebox for kid based on Raspberry Pi.
 ![](img/sliding.jpg) 
 
 - un convertisseur pour récupérer une valeur numérique à partir du potentiomètre : [MCP 3008](https://www.ebay.fr/itm/MCP3008-I-P-Convertisseur-analogique-vers-num%C3%A9rique-Octal-16DIP/152465009958?ssPageName=STRK%3AMEBIDX%3AIT&_trksid=p2057872.m2749.l2649)
+
+Pour le branchement, utilisé [les explications de ce post](https://web.archive.org/web/20201211215746/http://nagashur.com/blog/2013/01/13/lire-des-entrees-analogiques-sur-un-raspberry-avec-un-circuit-adc-le-mcp3008/)
 ![](img/mcp3008.jpg) 
 
 - une carte son audio. On en trouve tout un tas sous la dénomation 3D sound qui permettent d'avoir un son correct. On peut aussi utiliser la sortie jack du RPi en direct, mais la qualité reste limitée sur les premières générations de Rpi.
