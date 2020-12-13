@@ -67,7 +67,6 @@ class jukidbox:
 		GPIO.add_event_detect(self.pinPreviousTrack, GPIO.RISING, callback=self.manageButtons, bouncetime=1000)
 
 	def start(self):
-		self.updateCover()
 		self.playSong()
 
 		running = True
@@ -88,7 +87,6 @@ class jukidbox:
 				else:
 					if not self.player.isPlaying():
 						self.db.getNextTrack()
-						self.updateCover()
 						self.playSong()
 			counter += 1
 		# except Exception, e:
@@ -96,17 +94,18 @@ class jukidbox:
 		# 	self.player.stopSong()
 		# 	pygame.quit()
 
-	def updateCover(self):
+	def updateDisplayInformation(self):
 		self.logger.msg("FN::UpdateCover %s - %s" % (self.idCurrentAlbumDisplayed, self.db.getIdCurrentAlbum()))
 		if self.idCurrentAlbumDisplayed != self.db.getIdCurrentAlbum():
 			self.logger.msg("Loading album %s" % self.db.getIdCurrentAlbum())
 			coverInfo = self.db.getCoverInfo()
 			self.sc.updateCoverWithFile(coverInfo[0], coverInfo[1], coverInfo[2])
 			self.idCurrentAlbumDisplayed = self.db.getIdCurrentAlbum()
+		self.sc.updateSongDescription(self.db.currentTrackNumber, self.db.currentTrackTitle)
 
 	def playSong(self):
 		self.player.playSong(self.db.getCurrentSongPath())
-		self.sc.updateSongDescription(self.db.currentTrackNumber, self.db.currentTrackTitle)
+		self.updateDisplayInformation()
 		self.db.updatePidFile()
 
 	buttonManager = 0
@@ -132,12 +131,6 @@ class jukidbox:
 			elif pinNumber == self.pinPreviousTrack:
 				self.db.getNextTrack(False)
 				self.playSong()
-
-			self.updateCover()
-			self.logger("")
-			self.logger("")
-			self.logger("")
-			self.logger("")
 		self.buttonManager = 0
 
 jk = jukidbox()
