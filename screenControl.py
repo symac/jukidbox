@@ -48,16 +48,12 @@ class screenControl:
 		self.logger("SC::Loading cover %s" % path)
 		# We clean the previous cover
 		if self.isActive:
-			start_time = datetime.datetime.now()
 			with open(os.path.join(path, "_jukidboxcover.txt"),'rb') as f:
 				imgCoverFil = f.read()
 				img = pygame.image.fromstring(imgCoverFil, (cover_w, cover_h), 'RGB')
 				self.background.blit(img, (0,0))
 				self.screen.blit(self.background,(0,0))
-				pygame.display.flip() # update the display
-
-				elapsed = datetime.datetime.now() - start_time
-				self.logger("SC DURATION : %s" % int(elapsed.total_seconds()*1000))
+				# pygame.display.flip() # update the display
 				return
 		else:
 			self.logger("SC::Cover not displayed, screen inactive")
@@ -66,7 +62,10 @@ class screenControl:
 		if self.isActive:
 			try:
 				# We hide the previous data
-				pygame.draw.rect(self.background, pygame.Color(255, 255, 255), pygame.Rect(0, self.screen_w, self.screen_w, self.screen_h))
+				if self.isVertical():
+					pygame.draw.rect(self.background, pygame.Color(255, 255, 255), pygame.Rect(0, self.screen_w, self.screen_w, self.screen_h))
+				else:
+					pygame.draw.rect(self.background, pygame.Color(255, 255, 255), pygame.Rect(0, self.screen_w, self.screen_w, self.screen_h))
 
 				# Display some text
 				font = pygame.font.Font(None, 128)
@@ -81,11 +80,12 @@ class screenControl:
 				rect = pygame.Rect(10, self.screen_w + 160, self.screen_w, self.screen_h)
 
 				self.drawText(self.background, os.path.basename(title), (0, 0, 0), rect , font)
-				self.logger("SC::Title updated : %s" % title)
 
 				# Blit everything to the screen
 				self.screen.blit(self.background, (0, 0))
+				
 				pygame.display.flip()
+
 			except Exception, e:
 				self.logger("SC::Erreur drawtext")
 				self.logger("SC::", e)
