@@ -8,33 +8,27 @@ import RPi.GPIO as GPIO
 import alsaaudio
 import logging, sys
 import math
-from iniparse import INIConfig
+from configLoader import config
 
 logging.basicConfig(level=logging.INFO)
 
-config = INIConfig(file('config.ini'))
-SPICLK = int(config['potentiometer']['SPICLK'])
-SPIMISO = int(config['potentiometer']['SPIMISO'])
-SPIMOSI = int(config['potentiometer']['SPIMOSI'])
-SPICS = int(config['potentiometer']['SPICS'])
 
-GPIO.setmode(GPIO.BCM)
-# set up the SPI interface pins
-GPIO.setup(SPIMOSI, GPIO.OUT)
-GPIO.setup(SPIMISO, GPIO.IN)
-GPIO.setup(SPICLK, GPIO.OUT)
-GPIO.setup(SPICS, GPIO.OUT)
 
 class soundController:
-	DEBUG = 1
-
 	# Default settings
-	maxVolume = 85
+	config = config()
+	SPICLK = config.param('potentiometer', 'SPICLK')
+	SPIMISO = config.param('potentiometer', 'SPIMISO')
+	SPIMOSI = config.param('potentiometer', 'SPIMOSI')
+	SPICS = config.param('potentiometer', 'SPICS')
 
-	SPICLK = 18
-	SPIMISO = 23
-	SPIMOSI = 24
-	SPICS = 25
+	GPIO.setmode(GPIO.BCM)
+	GPIO.setup(SPIMOSI, GPIO.OUT)
+	GPIO.setup(SPIMISO, GPIO.IN)
+	GPIO.setup(SPICLK, GPIO.OUT)
+	GPIO.setup(SPICS, GPIO.OUT)
+
+	maxVolume = config.param('volume', 'max')
 
 	m = None
 
@@ -98,12 +92,8 @@ class soundController:
 		# how much has it changed since the last read?
 		pot_adjust = abs(trim_pot - self.last_read)
 
-		logging.error("trim_pot : %s" % trim_pot)
-
 		if ( pot_adjust > tolerance ):
 			trim_pot_changed = True
-
-		logging.info("trim_pot_changed %s" % trim_pot_changed)
 
 		if ( trim_pot_changed ):
 			set_volume = trim_pot / 10.24           # convert 10bit adc0 (0-1024) trim pot read into 0-100 volume level
