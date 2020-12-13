@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import pygame
 import os
+import datetime
 
 class screenControl:
 	isActive = False
@@ -43,28 +44,23 @@ class screenControl:
 	def setActive(self, value):
 		self.isActive = value
 
-	def updateCoverWithFile(self, filename):
-		self.logger("SC::Loading cover %s" % filename)
+	def updateCoverWithFile(self, path, cover_w, cover_h):
+		self.logger("SC::Loading cover %s" % path)
 		# We clean the previous cover
 		if self.isActive:
-			pygame.draw.rect(self.background, pygame.Color(200, 200, 200), pygame.Rect(0, 0, self.screen_w, self.screen_w))
-			img=pygame.image.load(filename)
-			img_size = img.get_size()
-			self.logger("Taille image originale : %s x %s" % (img_size[0], img_size[1]))
-			if self.isVertical():
-				img_resize = pygame.transform.scale(img, (self.screen_w, (self.screen_w * img_size[1] / img_size[0])))
-			else:
-				img_resize = pygame.transform.scale(img, (self.screen_h, (self.screen_h * img_size[1] / img_size[0])))
+			start_time = datetime.datetime.now()
+			with open(os.path.join(path, "_jukidboxcover.txt"),'rb') as f:
+				imgCoverFil = f.read()
+				img = pygame.image.fromstring(imgCoverFil, (cover_w, cover_h), 'RGB')
+				self.background.blit(img, (0,0))
+				self.screen.blit(self.background,(0,0))
+				pygame.display.flip() # update the display
 
-			img_size = img_resize.get_size()
-			self.logger("Taille image resize : %s x %s" % (img_size[0], img_size[1]))
-
-			self.background.blit(img_resize, (0,0))
-			self.screen.blit(self.background,(0,0))
-			pygame.display.flip() # update the display
+				elapsed = datetime.datetime.now() - start_time
+				self.logger("SC DURATION : %s" % int(elapsed.total_seconds()*1000))
+				return
 		else:
 			self.logger("SC::Cover not displayed, screen inactive")
-	pass
 
 	def updateSongDescription(self, number, title):
 		if self.isActive:
@@ -135,6 +131,16 @@ class screenControl:
 			text = text[i:]
 
 		return text
+
+	def coverToString(self, path):
+		img=pygame.image.load(path)
+		img_size = img.get_size()
+		if self.isVertical():
+			img_resize = pygame.transform.scale(img, (self.screen_w, (self.screen_w * img_size[1] / img_size[0]))).convert()
+		else:
+			img_resize = pygame.transform.scale(img, (self.screen_h, (self.screen_h * img_size[1] / img_size[0]))).convert()
+		imgString=pygame.image.tostring(img_resize, 'RGB')
+		return imgString, img_resize.get_size()
 
 	def checkQuit(self):
 		if self.isActive:

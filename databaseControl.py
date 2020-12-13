@@ -24,10 +24,12 @@ class databaseControl:
 	md5File = None
 
 	MP3_FOLDER = None
+	screen_control = None
 
-	def __init__(self, logger, mp3_folder):
+	def __init__(self, logger, mp3_folder, screen_control):
 		self.logger = logger
 		self.MP3_FOLDER = mp3_folder
+		self.screen_control = screen_control
 
 		database = '/home/rpi/jukidbox.sqlite'
 		self.pidFile = "/home/rpi/song.pid"
@@ -170,6 +172,16 @@ class databaseControl:
 		trackPath = os.path.join(result[0], result[1])
 		return trackPath
 
+	def getCoverInfo(self):
+		coverPath = None
+		self.cursor.execute('SELECT directory, cover_w, cover_h from album where id = ?', (self.getIdCurrentAlbum(), ))
+		result = self.cursor.fetchone()
+		if result[1] is not None:
+			return result
+			coverPath = os.path.join(*result)
+		return coverPath
+
+
 	def getCoverPath(self):
 		coverPath = None
 		self.cursor.execute('SELECT directory, cover from album where id = ?', (self.getIdCurrentAlbum(), ))
@@ -215,9 +227,15 @@ class databaseControl:
 						tracks.append(file)
 					elif file.upper().endswith("JPG"):
 						cover = file
+						convertedCover = self.screen_control.coverToString("%s/%s" % (subdir, cover))
+
+						convertedCover_w = convertedCover[1][0]
+						convertedCover_h = convertedCover[1][1]
+						with open(os.path.join(subdir,"_jukidboxcover.txt"), "wb") as stringFile: 
+						    stringFile.write(convertedCover[0]) 
 
 				# We start by creating an entry for the album
-				self.cursor.execute("insert into album (`directory`, `cover`) values (?, ?)",  (subdir, cover))
+				self.cursor.execute("insert into album (`directory`, `cover`, `cover_w`, `cover_h`) values (?, ?, ?, ?)",  (subdir, cover, convertedCover_w, convertedCover_h))
 				id_album = self.cursor.lastrowid
 				self.logger.msg("Ajout album %s" % id_album)
 
@@ -241,7 +259,7 @@ class databaseControl:
 
 	def createTableAlbum(self):
 		self.logger.msg("Create Album table")
-		self.cursor.execute('CREATE TABLE IF NOT EXISTS "album" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "directory" VARCHAR, "cover" VARCHAR)')
+		self.cursor.execute('CREATE TABLE IF NOT EXISTS "album" ("id" INTEGER PRIMARY KEY  AUTOINCREMENT  NOT NULL  UNIQUE , "directory" VARCHAR, "cover" VARCHAR, "cover_w" INTEGER, "cover_h" INTEGER)')
 
 	def createTableTrack(self):
 		self.logger.msg("Create Track table")

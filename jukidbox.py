@@ -43,12 +43,13 @@ class jukidbox:
 		self.pinNextTrack = self.config.param('button', 'NextTrack')
 		self.pinPreviousTrack = self.config.param('button', 'PreviousTrack')
 
-		self.db = databaseControl(self.logger, MP3_FOLDER)
 		self.prepareGpio()
 
 		self.sc = screenControl(self.logger)
 		self.sc.setActive(True)
 		self.sc.prepareScreen()
+
+		self.db = databaseControl(self.logger, MP3_FOLDER, self.sc)
 
 		self.player = player()
 
@@ -99,8 +100,8 @@ class jukidbox:
 		self.logger.msg("FN::UpdateCover %s - %s" % (self.idCurrentAlbumDisplayed, self.db.getIdCurrentAlbum()))
 		if self.idCurrentAlbumDisplayed != self.db.getIdCurrentAlbum():
 			self.logger.msg("Loading album %s" % self.db.getIdCurrentAlbum())
-			coverPath = self.db.getCoverPath()
-			self.sc.updateCoverWithFile(coverPath)
+			coverInfo = self.db.getCoverInfo()
+			self.sc.updateCoverWithFile(coverInfo[0], coverInfo[1], coverInfo[2])
 			self.idCurrentAlbumDisplayed = self.db.getIdCurrentAlbum()
 
 	def playSong(self):
