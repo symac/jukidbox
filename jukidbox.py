@@ -140,6 +140,3 @@ class jukidbox:
 
 jk = jukidbox()
 jk.start()
-
-if __name__ == '__main__':
-    main()
