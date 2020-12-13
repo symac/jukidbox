@@ -5,6 +5,8 @@ import os, subprocess, sys
 import pygame
 from screenControl 	import screenControl
 from databaseControl 	import databaseControl
+from configLoader import config
+
 from player import player
 from logger import logger
 import RPi.GPIO as GPIO
@@ -13,7 +15,6 @@ import time
 logEnabled = False
 
 MP3_FOLDER = "/media/usb/jukidbox"
-from iniparse import INIConfig
 
 class jukidbox:
 	logger = None
@@ -35,12 +36,12 @@ class jukidbox:
 		self.logger = logger()
 		self.logger.msg("Init")
 
-		self.config = INIConfig(file('config.ini'))
-		self.pinNextAlbum = int(self.config['button']['NextAlbum'])
-		self.pinPreviousAlbum = int(self.config['button']['PreviousAlbum'])
-		self.pinNextTrack = int(self.config['button']['NextTrack'])
-		self.pinPreviousTrack = int(self.config['button']['PreviousTrack'])
+		self.config = config()
 
+		self.pinNextAlbum = self.config.param('button', 'NextAlbum')
+		self.pinPreviousAlbum = self.config.param('button', 'PreviousAlbum')
+		self.pinNextTrack = self.config.param('button', 'NextTrack')
+		self.pinPreviousTrack = self.config.param('button', 'PreviousTrack')
 
 		self.db = databaseControl(self.logger, MP3_FOLDER)
 		self.prepareGpio()
