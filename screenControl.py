@@ -44,11 +44,10 @@ class screenControl:
 	def setActive(self, value):
 		self.isActive = value
 
-	def updateCoverWithFile(self, path, cover_w, cover_h):
-		self.logger("SC::Loading cover %s" % path)
+	def updateCoverWithFile(self, id_album, cover_w, cover_h):
 		# We clean the previous cover
 		if self.isActive:
-			with open(os.path.join(path, "_jukidboxcover.txt"),'rb') as f:
+			with open("/home/rpi/covers/%s.txt" % id_album,'rb') as f:
 				imgCoverFil = f.read()
 				img = pygame.image.fromstring(imgCoverFil, (cover_w, cover_h), 'RGB')
 				self.background.blit(img, (0,0))

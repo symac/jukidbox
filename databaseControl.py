@@ -174,7 +174,7 @@ class databaseControl:
 
 	def getCoverInfo(self):
 		coverPath = None
-		self.cursor.execute('SELECT directory, cover_w, cover_h from album where id = ?', (self.getIdCurrentAlbum(), ))
+		self.cursor.execute('SELECT id, cover_w, cover_h from album where id = ?', (self.getIdCurrentAlbum(), ))
 		result = self.cursor.fetchone()
 		if result[1] is not None:
 			return result
@@ -227,17 +227,19 @@ class databaseControl:
 						tracks.append(file)
 					elif file.upper().endswith("JPG"):
 						cover = file
-						convertedCover = self.screen_control.coverToString("%s/%s" % (subdir, cover))
-
-						convertedCover_w = convertedCover[1][0]
-						convertedCover_h = convertedCover[1][1]
-						with open(os.path.join(subdir,"_jukidboxcover.txt"), "wb") as stringFile: 
-						    stringFile.write(convertedCover[0]) 
 
 				# We start by creating an entry for the album
+				convertedCover = self.screen_control.coverToString("%s/%s" % (subdir, cover))
+				convertedCover_w = convertedCover[1][0]
+				convertedCover_h = convertedCover[1][1]
+
 				self.cursor.execute("insert into album (`directory`, `cover`, `cover_w`, `cover_h`) values (?, ?, ?, ?)",  (subdir, cover, convertedCover_w, convertedCover_h))
 				id_album = self.cursor.lastrowid
 				self.logger.msg("Ajout album %s" % id_album)
+
+				with open("/home/rpi/covers/%s.txt" % id_album, "wb") as stringFile: 
+					stringFile.write(convertedCover[0]) 
+
 
 				trackNumber = 1
 				for track in tracks:
@@ -256,6 +258,9 @@ class databaseControl:
 		# We need to remove any information regarding the music DB
 		self.cursor.execute("delete from album")
 		self.cursor.execute("delete from track")
+
+		if not os.path.exists("/home/rpi/covers/"):
+			os.makedirs("/home/rpi/covers/")
 
 	def createTableAlbum(self):
 		self.logger.msg("Create Album table")
