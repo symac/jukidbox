@@ -230,7 +230,7 @@ class databaseControl:
 			self.logger.msg("# %s #" % subdir)
 
 			tracks = []
-			cover = ""
+			cover = None
 
 			files = os.walk(subdir).next()[2]
 			if (len(files) > 0):
@@ -241,7 +241,10 @@ class databaseControl:
 						cover = file
 
 				# We start by creating an entry for the album
-				convertedCover = self.screen_control.coverToString("%s/%s" % (subdir, cover))
+				if cover == None:
+					convertedCover = self.screen_control.coverToString("%s/%s" % ("/root/jukidbox/img", "nocover.jpg"))
+				else:
+					convertedCover = self.screen_control.coverToString("%s/%s" % (subdir, cover))
 				convertedCover_w = convertedCover[1][0]
 				convertedCover_h = convertedCover[1][1]
 
