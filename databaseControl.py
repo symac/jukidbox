@@ -53,13 +53,17 @@ class databaseControl:
 		self.logger.msg("Database loaded")
 
 	def getInfoFromPidFile(self):
+		self.logger.msg("Get info from PID FILE")
 		if os.path.isfile(self.pidFile):
+			self.logger.msg("File exists")
 			with open(self.pidFile, 'r') as content_file:
 				content = content_file.read().strip()
+				self.logger.msg("Content : %s" % content)
 				if content != "":
 					contentTab = content.split(",")
 					self.idCurrentTrack = contentTab[0]
 					self.idCurrentAlbum = contentTab[1]
+					self.logger.msg("Album : %s, Track : %s" % (self.idCurrentAlbum, self.idCurrentTrack))
 
 		if self.idCurrentTrack is None:
 			self.getNextTrack()
@@ -67,6 +71,8 @@ class databaseControl:
 	def writeToPidFile(self, line = ''):
 		file = open(self.pidFile, "w")
 		file.write(line)
+		file.flush()
+		os.fsync(file.fileno())
 		file.close()
 
 	def updatePidFile(self):
@@ -194,6 +200,7 @@ class databaseControl:
 		import subprocess
 
 		mp3CurrentSize = subprocess.check_output(['du', '-s', self.MP3_FOLDER]).split()[0].decode('utf-8')
+		self.logger.msg("Current size : %s" % mp3CurrentSize)
 		mp3PreviousSize = 0
 
 		if os.path.isfile(self.md5File):
@@ -201,11 +208,16 @@ class databaseControl:
 			mp3PreviousSize = file.read()
 			file.close()
 
+		self.logger.msg("Current size : #%s#" % mp3CurrentSize)
+		self.logger.msg("Previous size : #%s#" % mp3CurrentSize)
+		
 		if mp3CurrentSize != mp3PreviousSize:
 			self.logger.msg("Need update")
 			self.updateDatabase()
 			file = open(self.md5File, "w")
 			file.write("%s" % (mp3CurrentSize))
+			file.flush()
+			os.fsync(file.fileno())
 			file.close()
 			self.writeToPidFile("")
 
@@ -239,6 +251,8 @@ class databaseControl:
 
 				with open("/home/rpi/covers/%s.txt" % id_album, "wb") as stringFile: 
 					stringFile.write(convertedCover[0]) 
+					stringFile.flush()
+					os.fsync(stringFile.fileno())
 
 
 				trackNumber = 1
