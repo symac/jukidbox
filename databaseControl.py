@@ -213,13 +213,6 @@ class databaseControl:
 		
 		if mp3CurrentSize != mp3PreviousSize:
 			self.logger.msg("Need update")
-
-			previousCovers = os.listdir(self.coversFolder)
-			for cover in previousCovers:
-				if cover.endswith(".txt"):
-					self.logger.msg("Remove %s" % cover)
-					os.remove(os.path.join(self.coversFolder, cover))
-
 			self.updateDatabase()
 			file = open(self.md5File, "w")
 			file.write("%s" % (mp3CurrentSize))
@@ -230,7 +223,6 @@ class databaseControl:
 
 	def updateDatabase(self):
 		self.resetDatabase()
-
 		# We are going to iterate through all subdirectories of MP3_FOLDER
 		subdirs = [x[0] for x in os.walk(self.MP3_FOLDER)]
 		for subdir in subdirs:
@@ -285,6 +277,12 @@ class databaseControl:
 
 		if not os.path.exists(self.coversFolder):
 			os.makedirs(self.coversFolder)
+
+		previousCovers = os.listdir(self.coversFolder)
+		for cover in previousCovers:
+			if cover.endswith(".txt"):
+				self.logger.msg("Remove %s" % cover)
+				os.remove(os.path.join(self.coversFolder, cover))
 
 	def createTableAlbum(self):
 		self.logger.msg("Create Album table")
