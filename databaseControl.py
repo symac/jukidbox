@@ -22,7 +22,7 @@ class databaseControl:
 
 	pidFile = None
 	md5File = None
-
+	coversFolder = None
 	MP3_FOLDER = None
 	screen_control = None
 
@@ -34,7 +34,7 @@ class databaseControl:
 		database = '/home/rpi/jukidbox.sqlite'
 		self.pidFile = "/home/rpi/song.pid"
 		self.md5File = "/home/rpi/md5.txt"
-
+		self.coversFolder = "/home/rpi/covers/"
 		print "Connexion a %s" % database
 		self.connectToDatabase(database)
 		self.updateDatabaseIfNeeded()
@@ -213,6 +213,13 @@ class databaseControl:
 		
 		if mp3CurrentSize != mp3PreviousSize:
 			self.logger.msg("Need update")
+
+			previousCovers = os.listdir(self.coversFolder)
+			for cover in previousCovers:
+				if cover.endswith(".txt"):
+					self.logger.msg("Remove %s" % cover)
+					os.remove(os.path.join(self.coversFolder, cover))
+
 			self.updateDatabase()
 			file = open(self.md5File, "w")
 			file.write("%s" % (mp3CurrentSize))
@@ -252,7 +259,7 @@ class databaseControl:
 				id_album = self.cursor.lastrowid
 				self.logger.msg("Ajout album %s" % id_album)
 
-				with open("/home/rpi/covers/%s.txt" % id_album, "wb") as stringFile: 
+				with open("%s%s.txt" % (self.coversFolder, id_album), "wb") as stringFile: 
 					stringFile.write(convertedCover[0]) 
 					stringFile.flush()
 					os.fsync(stringFile.fileno())
@@ -276,8 +283,8 @@ class databaseControl:
 		self.cursor.execute("delete from album")
 		self.cursor.execute("delete from track")
 
-		if not os.path.exists("/home/rpi/covers/"):
-			os.makedirs("/home/rpi/covers/")
+		if not os.path.exists(self.coversFolder):
+			os.makedirs(self.coversFolder)
 
 	def createTableAlbum(self):
 		self.logger.msg("Create Album table")
