@@ -225,7 +225,7 @@ class databaseControl:
 		self.resetDatabase()
 		# We are going to iterate through all subdirectories of MP3_FOLDER
 		subdirs = [x[0] for x in os.walk(self.MP3_FOLDER)]
-		for subdir in subdirs:
+		for subdir in sorted(subdirs):
 			self.logger.msg("# %s #" % subdir)
 
 			tracks = []
