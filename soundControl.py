@@ -98,7 +98,7 @@ class soundController:
 		if ( trim_pot_changed ):
 			set_volume = trim_pot / 10.24           # convert 10bit adc0 (0-1024) trim pot read into 0-100 volume level
 			set_volume = round(set_volume)          # round out decimal value
-			set_volume_pct = int(set_volume)            # cast volume as integer
+			set_volume_pct = 100 - int(set_volume)            # cast volume as integer
 
 			set_volume_absolute = self.getAbsoluteVolume(set_volume_pct)
 			self.m.setvolume(set_volume_absolute)
